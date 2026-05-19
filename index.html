@@ -130,6 +130,19 @@
     box-shadow:0 1px 4px rgba(184,115,51,0.3);
   }
   .btn-edit-row:hover { background:#9e6229; box-shadow:0 2px 8px rgba(184,115,51,0.4); }
+  /* DATE DETAILS TOOLTIP */
+  .eye-btn{background:none;border:none;cursor:pointer;font-size:15px;padding:2px 4px;color:var(--text3);border-radius:4px;transition:color .15s;}
+  .eye-btn:hover{color:var(--copper);}
+  .date-tooltip-wrap{position:relative;display:inline-block;}
+  .date-tooltip{display:none;position:absolute;right:0;top:calc(100% + 6px);background:var(--juniper);color:#fff;border-radius:10px;padding:14px 16px;min-width:280px;z-index:999;box-shadow:0 8px 24px rgba(0,0,0,0.2);font-size:12px;line-height:1.4;}
+  .date-tooltip::before{content:'';position:absolute;top:-5px;right:10px;border-left:5px solid transparent;border-right:5px solid transparent;border-bottom:5px solid var(--juniper);}
+  .date-tooltip-wrap:hover .date-tooltip{display:block;}
+  .date-tooltip-row{display:flex;justify-content:space-between;gap:16px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.1);}
+  .date-tooltip-row:last-child{border-bottom:none;}
+  .date-tooltip-label{color:rgba(255,255,255,.7);white-space:nowrap;}
+  .date-tooltip-val{font-weight:600;white-space:nowrap;}
+  .date-tooltip-val.empty{color:rgba(255,255,255,.35);font-weight:400;font-style:italic;}
+  .date-tooltip-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:rgba(255,255,255,.5);margin-bottom:8px;}
 
   /* PAGINATION */
   .pagination{display:flex;align-items:center;justify-content:space-between;padding:10px 24px;border-top:1px solid var(--border);background:var(--surface);}
@@ -411,6 +424,7 @@
               <th onclick="sortTable('forecastCompleted')">Forecast ↕</th>
               <th onclick="sortTable('firstDraftActual')">1st Draft ↕</th>
               <th onclick="sortTable('finalSentActual')">Final Sent ↕</th>
+              <th onclick="sortTable('budgetDue')">Budget Due ↕</th>
               <th onclick="sortTable('metPMA')">PMA Met ↕</th>
               <th style="text-align:center;">Done</th>
               <th>Actions</th>
@@ -1346,7 +1360,7 @@ function renderTable() {
   const start=(currentPage-1)*PAGE_SIZE, items=filteredProperties.slice(start,start+PAGE_SIZE);
   const tbody=document.getElementById('table-body');
   if(!items.length){
-    tbody.innerHTML=`<tr><td colspan="12"><div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-title">No properties found</div><p>Try adjusting filters or add a new property.</p></div></td></tr>`;
+    tbody.innerHTML=`<tr><td colspan="13"><div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-title">No properties found</div><p>Try adjusting filters or add a new property.</p></div></td></tr>`;
     renderPagination(); return;
   }
   tbody.innerHTML=items.map(p=>{
@@ -1362,9 +1376,27 @@ function renderTable() {
       <td><span class="cell-date ${!p.forecastCompleted?'empty':''}">${fmtDateDisplay(p.forecastCompleted)}</span></td>
       <td><span class="cell-date ${!p.firstDraftActual?'empty':''}">${fmtDateDisplay(p.firstDraftActual)}</span></td>
       <td><span class="cell-date ${!p.finalSentActual?'empty':''}">${fmtDateDisplay(p.finalSentActual)}</span></td>
+      <td><span class="cell-date ${!p.budgetDue?'empty':''}">${fmtDateDisplay(p.budgetDue)}</span></td>
       <td>${pmaBadge(p.metPMA)}</td>
       <td style="text-align:center;">${p.ticketOpened ? '<span style="color:#0f9e72;font-size:18px;" title="Ticket opened with Budget Support">✓</span>' : '<span style="color:#dde0e8;font-size:16px;">○</span>'}</td>
-      <td style="display:flex;gap:6px;">
+      <td style="display:flex;gap:6px;align-items:center;">
+  <div class="date-tooltip-wrap">
+    <button class="eye-btn" title="View date details">👁</button>
+    <div class="date-tooltip">
+      <div class="date-tooltip-title">📅 ${esc(p.name)}</div>
+      <div class="date-tooltip-row"><span class="date-tooltip-label">Budget Due to Client</span><span class="date-tooltip-val ${!p.budgetDue?'empty':''}">${fmtDateDisplay(p.budgetDue)||'—'}</span></div>
+      <div class="date-tooltip-row"><span class="date-tooltip-label">Forecast Target</span><span class="date-tooltip-val ${!p.forecastTarget?'empty':''}">${fmtDateDisplay(p.forecastTarget)||'—'}</span></div>
+      <div class="date-tooltip-row"><span class="date-tooltip-label">Forecast Completed</span><span class="date-tooltip-val ${!p.forecastCompleted?'empty':''}">${fmtDateDisplay(p.forecastCompleted)||'—'}</span></div>
+      <div class="date-tooltip-row"><span class="date-tooltip-label">1st Draft Due to RM</span><span class="date-tooltip-val ${!p.firstDraftRM?'empty':''}">${fmtDateDisplay(p.firstDraftRM)||'—'}</span></div>
+      <div class="date-tooltip-row"><span class="date-tooltip-label">1st Draft Due to RVP</span><span class="date-tooltip-val ${!p.firstDraftActual?'empty':''}">${fmtDateDisplay(p.firstDraftActual)||'—'}</span></div>
+      <div class="date-tooltip-row"><span class="date-tooltip-label">RVP Return to RM</span><span class="date-tooltip-val ${!p.rvpReturnActual?'empty':''}">${fmtDateDisplay(p.rvpReturnActual)||'—'}</span></div>
+      <div class="date-tooltip-row"><span class="date-tooltip-label">CM Return Deadline</span><span class="date-tooltip-val ${!p.cmReturnActual?'empty':''}">${fmtDateDisplay(p.cmReturnActual)||'—'}</span></div>
+      <div class="date-tooltip-row"><span class="date-tooltip-label">RM Final Review</span><span class="date-tooltip-val ${!p.rmReviewActual?'empty':''}">${fmtDateDisplay(p.rmReviewActual)||'—'}</span></div>
+      <div class="date-tooltip-row"><span class="date-tooltip-label">Final Budget Sent</span><span class="date-tooltip-val ${!p.finalSentActual?'empty':''}">${fmtDateDisplay(p.finalSentActual)||'—'}</span></div>
+      <div class="date-tooltip-row"><span class="date-tooltip-label">Client Approved</span><span class="date-tooltip-val ${!p.clientApproved?'empty':''}">${fmtDateDisplay(p.clientApproved)||'—'}</span></div>
+      <div class="date-tooltip-row"><span class="date-tooltip-label">Approval Letter</span><span class="date-tooltip-val ${!p.approvalLetter?'empty':''}">${fmtDateDisplay(p.approvalLetter)||'—'}</span></div>
+    </div>
+  </div>
   <button class="btn-edit-row" onclick="openEditModal('${p.id}')">✏️ Edit</button>
   <button class="btn-edit-row" style="background:#d63b3b;box-shadow:0 1px 4px rgba(214,59,59,0.3);" onclick="dispoProperty('${p.id}','${esc(p.name)}')">Dispo</button>
 </td>
