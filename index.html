@@ -321,7 +321,7 @@
     <h2>Admin Login</h2>
     <p class="admin-login-sub">Enter your name and today's passcode to access with admin privileges.</p>
     <div style="margin-bottom:14px;"><label class="login-label">First Name <span class="req">*</span></label><input type="text" class="login-input" id="admin-name" placeholder="Jane" onkeydown="if(event.key==='Enter')document.getElementById('admin-passcode').focus()"></div>
-    <div style="margin-bottom:6px;"><label class="login-label">Passcode <span class="req">*</span></label><input type="password" class="admin-passcode-input" id="admin-passcode" maxlength="6" placeholder="••••••" onkeydown="if(event.key==='Enter')verifyAdminLogin()"></div>
+    <div style="margin-bottom:6px;"><label class="login-label">Passcode <span class="req">*</span></label><input type="password" class="admin-passcode-input" id="admin-passcode" placeholder="Password" onkeydown="if(event.key==='Enter')verifyAdminLogin()"></div>
     <div id="admin-login-err" style="color:var(--red);font-size:12px;margin-bottom:10px;display:none;">Incorrect passcode. Try again.</div>
     <button class="login-btn" onclick="verifyAdminLogin()">Verify →</button>
     <div style="text-align:center;margin-top:12px;"><button onclick="closeAdminLoginModal()" style="background:none;border:none;font-size:11px;color:var(--text3);cursor:pointer;font-family:var(--font);">Cancel</button></div>
@@ -723,7 +723,7 @@ function verifyAdminLogin() {
   const passcode = document.getElementById('admin-passcode').value.trim();
   const err = document.getElementById('admin-login-err');
   if (!name) { showToast('Please enter your name', 'error'); return; }
-  if (passcode !== getTodayCode()) {
+  if (passcode !== "Budgets") {
     err.style.display = 'block';
     document.getElementById('admin-passcode').value = '';
     return;
