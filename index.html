@@ -447,10 +447,10 @@
     <div class="modal-body">
       <!-- Password Gate -->
       <div id="settings-pw-gate">
-        <p style="font-size:13px;color:var(--text2);margin-bottom:14px;line-height:1.6;">Enter today's 6 digit access code to continue.<br><span style="font-size:11px;color:var(--text3);">Format: ******</span></p>
+        <p style="font-size:13px;color:var(--text2);margin-bottom:14px;line-height:1.6;">Enter the access code to continue.</p>
         <div class="form-group" style="margin-bottom:14px;">
           <label class="form-label">Access Code</label>
-          <input type="password" class="form-input" id="settings-pw-input" placeholder="******" maxlength="6" onkeydown="if(event.key==='Enter')checkSettingsPw()">
+          <input type="password" class="form-input" id="settings-pw-input" placeholder="Password" onkeydown="if(event.key==='Enter')checkSettingsPw()">
           <div id="settings-pw-err" style="color:var(--red);font-size:12px;margin-top:6px;display:none;">Incorrect code. Try again.</div>
         </div>
         <button class="btn btn-copper" style="width:100%" onclick="checkSettingsPw()">Enter →</button>
@@ -1792,7 +1792,7 @@ function getTodayCode(){
 function checkSettingsPw(){
   const input=document.getElementById('settings-pw-input').value.trim();
   const err=document.getElementById('settings-pw-err');
-  if(input===getTodayCode()){
+  if(input==="Budgets"){
     document.getElementById('settings-pw-gate').style.display='none';
     document.getElementById('settings-content').style.display='block';
     document.getElementById('settings-footer').style.display='flex';
