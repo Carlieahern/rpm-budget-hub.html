@@ -205,7 +205,7 @@
   .sync-indicator.visible{display:flex;}
   .sync-spin{width:12px;height:12px;border:2px solid rgba(255,255,255,.25);border-top-color:rgba(255,255,255,.8);border-radius:50%;animation:spin 0.7s linear infinite;flex-shrink:0;}
   /* CLEAR DATE LINK */
-  .clear-date-link{display:block;font-size:10px;color:var(--copper);text-decoration:none;cursor:pointer;margin-top:3px;background:none;border:none;padding:0;font-family:var(--font);}
+  .clear-date-link{font-size:10px;color:var(--copper);text-decoration:none;cursor:pointer;background:none;border:none;padding:0;font-family:var(--font);margin-left:auto;flex-shrink:0;}
   .clear-date-link:hover{text-decoration:underline;}
   .loading-overlay{display:none;position:fixed;inset:0;background:rgba(255,255,255,0.85);z-index:2000;align-items:center;justify-content:center;flex-direction:column;gap:14px;}
   .loading-overlay.visible{display:flex;}
@@ -473,7 +473,7 @@
       <div id="settings-pw-gate">
         <p style="font-size:13px;color:var(--text2);margin-bottom:14px;line-height:1.6;">Enter the access code to continue.</p>
         <div class="form-group" style="margin-bottom:14px;">
-          <label class="form-label">Access Code</label>
+          <label class="form-label" style="display:flex;align-items:center;">Access Code</label>
           <input type="password" class="form-input" id="settings-pw-input" placeholder="Password" onkeydown="if(event.key==='Enter')checkSettingsPw()">
           <div id="settings-pw-err" style="color:var(--red);font-size:12px;margin-top:6px;display:none;">Incorrect code. Try again.</div>
         </div>
@@ -489,7 +489,7 @@
         <div class="form-section">
           <div class="form-section-title">Update API Token</div>
           <div class="form-group" style="margin-bottom:12px;">
-            <label class="form-label">Monday.com API Token</label>
+            <label class="form-label" style="display:flex;align-items:center;">Monday.com API Token</label>
             <input type="password" class="form-input" id="settings-token" placeholder="Paste new token here...">
             <div style="font-size:11px;color:var(--text3);margin-top:4px;">Leave blank to keep current token.</div>
           </div>
@@ -537,47 +537,47 @@
       <div class="form-section">
         <div class="form-section-title">Property Information</div>
         <div class="form-grid">
-          <div class="form-group"><label class="form-label">Property Name <span class="req">*</span></label><input type="text" class="form-input" id="f-name"></div>
+          <div class="form-group"><label class="form-label" style="display:flex;align-items:center;">Property Name <span class="req">*</span></label><input type="text" class="form-input" id="f-name"></div>
           <div class="form-group">
-  <label class="form-label">Property Code <span class="req" id="req-code">*</span></label>
+  <label class="form-label" style="display:flex;align-items:center;">Property Code <span class="req" id="req-code">*</span></label>
   <input type="text" class="form-input" id="f-code" oninput="checkDuplicateCode()">
   <div id="duplicate-code-msg" style="display:none;margin-top:6px;padding:8px 12px;background:#fff8e7;border:1px solid var(--copper);border-radius:8px;font-size:12px;color:var(--juniper);"></div>
 </div>
-          <div class="form-group"><label class="form-label">Property Owner <span class="req" id="req-owner">*</span></label><input type="text" class="form-input" id="f-owner"></div>
-          <div class="form-group"><label class="form-label">PMA Effective Date <span class="req" id="req-pma">*</span></label><input type="date" class="form-input" id="f-pma"></div>
-          <div class="form-group"><label class="form-label">Primary Specialty <span class="req" id="req-specialty">*</span></label><select class="form-select" id="f-specialty"><option value="">Select...</option><option>Conventional</option><option>Affordable</option><option>Commercial</option></select></div>
-          <div class="form-group"><label class="form-label">System <span class="req" id="req-system">*</span></label><select class="form-select" id="f-system"><option value="">Select...</option><option>RPM Yardi</option><option>RPM ONEsite</option><option>RPM Entrata</option><option>Client Hosted Yardi</option><option>Client Hosted ONEsite</option></select></div>
-          <div class="form-group"><label class="form-label">Status <span class="req" id="req-status">*</span></label><select class="form-select" id="f-status"><option value="">Select...</option><option>RPM Managed</option><option>Dispositioning</option></select></div>
-          <div class="form-group"><label class="form-label">Budget Due to Client per PMA <span class="info-icon">i<span class="tooltip-text">Client submission deadline</span></span> <span class="req" id="req-budget-due">*</span></label><input type="date" class="form-input" id="f-budget-due" oninput="calcMetPMA()"></div>
+          <div class="form-group"><label class="form-label" style="display:flex;align-items:center;">Property Owner <span class="req" id="req-owner">*</span></label><input type="text" class="form-input" id="f-owner"></div>
+          <div class="form-group"><label class="form-label" style="display:flex;align-items:center;">PMA Effective Date <span class="req" id="req-pma">*</span></label><input type="date" class="form-input" id="f-pma"></div>
+          <div class="form-group"><label class="form-label" style="display:flex;align-items:center;">Primary Specialty <span class="req" id="req-specialty">*</span></label><select class="form-select" id="f-specialty"><option value="">Select...</option><option>Conventional</option><option>Affordable</option><option>Commercial</option></select></div>
+          <div class="form-group"><label class="form-label" style="display:flex;align-items:center;">System <span class="req" id="req-system">*</span></label><select class="form-select" id="f-system"><option value="">Select...</option><option>RPM Yardi</option><option>RPM ONEsite</option><option>RPM Entrata</option><option>Client Hosted Yardi</option><option>Client Hosted ONEsite</option></select></div>
+          <div class="form-group"><label class="form-label" style="display:flex;align-items:center;">Status <span class="req" id="req-status">*</span></label><select class="form-select" id="f-status"><option value="">Select...</option><option>RPM Managed</option><option>Dispositioning</option></select></div>
+          <div class="form-group"><label class="form-label" style="display:flex;align-items:center;">Budget Due to Client per PMA <span class="info-icon">i<span class="tooltip-text">Client submission deadline</span></span> <span class="req" id="req-budget-due">*</span></label><input type="date" class="form-input" id="f-budget-due" oninput="calcMetPMA()"></div>
         </div>
       </div>
       <div class="form-section">
         <div class="form-section-title">Operations Team <span style="font-size:10px;color:var(--text3);font-weight:400;text-transform:none">(at least one required)</span></div>
         <div class="form-grid cols3">
-          <div class="form-group"><label class="form-label">CM Name</label><input type="text" class="form-input" id="f-cm"></div>
-          <div class="form-group"><label class="form-label">Sr CM Name</label><input type="text" class="form-input" id="f-srcm"></div>
-          <div class="form-group"><label class="form-label">RM Name</label><input type="text" class="form-input" id="f-rm"></div>
-          <div class="form-group"><label class="form-label">Sr RM Name</label><input type="text" class="form-input" id="f-srrm"></div>
-          <div class="form-group"><label class="form-label">RVP Name</label><input type="text" class="form-input" id="f-rvp"></div>
-          <div class="form-group"><label class="form-label">SVP Ops Name</label><input type="text" class="form-input" id="f-svp"></div>
+          <div class="form-group"><label class="form-label" style="display:flex;align-items:center;">CM Name</label><input type="text" class="form-input" id="f-cm"></div>
+          <div class="form-group"><label class="form-label" style="display:flex;align-items:center;">Sr CM Name</label><input type="text" class="form-input" id="f-srcm"></div>
+          <div class="form-group"><label class="form-label" style="display:flex;align-items:center;">RM Name</label><input type="text" class="form-input" id="f-rm"></div>
+          <div class="form-group"><label class="form-label" style="display:flex;align-items:center;">Sr RM Name</label><input type="text" class="form-input" id="f-srrm"></div>
+          <div class="form-group"><label class="form-label" style="display:flex;align-items:center;">RVP Name</label><input type="text" class="form-input" id="f-rvp"></div>
+          <div class="form-group"><label class="form-label" style="display:flex;align-items:center;">SVP Ops Name</label><input type="text" class="form-input" id="f-svp"></div>
         </div>
       </div>
 
       <div class="form-section">
         <div class="form-section-title">Budget Due Date Timeline</div>
         <div class="form-grid">
-          <div class="form-group"><label class="form-label">Forecast Completed <span class="info-icon">i<span class="tooltip-text">This should be completed prior to Regional Budget Workshop</span></span></label><input type="date" class="form-input" id="f-forecast"><button type="button" class="clear-date-link" onclick="document.getElementById('f-forecast').value=''">clear date</button></div>
-          <div class="form-group"><label class="form-label">First Draft Due to RM <span class="info-icon">i<span class="tooltip-text">Community Manager to begin budget at Regional Budget Workshop</span></span></label><input type="date" class="form-input" id="f-draft-rm"><button type="button" class="clear-date-link" onclick="document.getElementById('f-draft-rm').value=''">clear date</button></div>
-          <div class="form-group"><label class="form-label">First Draft Sent to RVP <span class="info-icon">i<span class="tooltip-text">Regional Manager to complete revisions or work directly with Community Manager to complete revisions</span></span></label><input type="date" class="form-input" id="f-draft"><button type="button" class="clear-date-link" onclick="document.getElementById('f-draft').value=''">clear date</button></div>
-          <div class="form-group"><label class="form-label">RVP Returned to RM <span class="info-icon">i<span class="tooltip-text">RVP to complete initial review and return with requested revisions</span></span></label><input type="date" class="form-input" id="f-rvp-return"><button type="button" class="clear-date-link" onclick="document.getElementById('f-rvp-return').value=''">clear date</button></div>
-          <div class="form-group"><label class="form-label">Returned to CM <span class="info-icon">i<span class="tooltip-text">Regional Manager to review the request and review this with the Community Manager to make final edits</span></span></label><input type="date" class="form-input" id="f-cm-return"><button type="button" class="clear-date-link" onclick="document.getElementById('f-cm-return').value=''">clear date</button></div>
-          <div class="form-group"><label class="form-label">RM Final Review Done <span class="info-icon">i<span class="tooltip-text">Deadline for final budget draft to be completed prior to sending to the client. This should align with the Budget Due Date to Client per PMA</span></span></label><input type="date" class="form-input" id="f-rm-review"><button type="button" class="clear-date-link" onclick="document.getElementById('f-rm-review').value=''">clear date</button></div>
-          <div class="form-group"><label class="form-label">Final Budget Sent to Client</label><input type="date" class="form-input" id="f-final" oninput="calcMetPMA()"></div>
-          <div class="form-group"><label class="form-label">Budget Approved by Client</label><input type="date" class="form-input" id="f-approved"><button type="button" class="clear-date-link" onclick="document.getElementById('f-approved').value=''">clear date</button></div>
-          <div class="form-group"><label class="form-label">Signed Approval Letter Received</label><input type="date" class="form-input" id="f-approval-letter"><button type="button" class="clear-date-link" onclick="document.getElementById('f-approval-letter').value=''">clear date</button></div>
-          <div class="form-group"><label class="form-label">Ticket Opened with Budget Support <span class="info-icon">i<span class="tooltip-text">Please include the signed approval form or approval email when submitting the support request.</span></span></label><input type="date" class="form-input" id="f-ticket"><button type="button" class="clear-date-link" onclick="document.getElementById('f-ticket').value=''">clear date</button></div>
+          <div class="form-group"><label class="form-label" style="display:flex;align-items:center;">Forecast Completed <span class="info-icon">i<span class="tooltip-text">This should be completed prior to Regional Budget Workshop</span></span><button type="button" class="clear-date-link" onclick="document.getElementById('f-forecast').value=''">clear date</button></label><input type="date" class="form-input" id="f-forecast"></div>
+          <div class="form-group"><label class="form-label" style="display:flex;align-items:center;">First Draft Due to RM <span class="info-icon">i<span class="tooltip-text">Community Manager to begin budget at Regional Budget Workshop</span></span><button type="button" class="clear-date-link" onclick="document.getElementById('f-draft-rm').value=''">clear date</button></label><input type="date" class="form-input" id="f-draft-rm"></div>
+          <div class="form-group"><label class="form-label" style="display:flex;align-items:center;">First Draft Sent to RVP <span class="info-icon">i<span class="tooltip-text">Regional Manager to complete revisions or work directly with Community Manager to complete revisions</span></span><button type="button" class="clear-date-link" onclick="document.getElementById('f-draft').value=''">clear date</button></label><input type="date" class="form-input" id="f-draft"></div>
+          <div class="form-group"><label class="form-label" style="display:flex;align-items:center;">RVP Returned to RM <span class="info-icon">i<span class="tooltip-text">RVP to complete initial review and return with requested revisions</span></span><button type="button" class="clear-date-link" onclick="document.getElementById('f-rvp-return').value=''">clear date</button></label><input type="date" class="form-input" id="f-rvp-return"></div>
+          <div class="form-group"><label class="form-label" style="display:flex;align-items:center;">Returned to CM <span class="info-icon">i<span class="tooltip-text">Regional Manager to review the request and review this with the Community Manager to make final edits</span></span><button type="button" class="clear-date-link" onclick="document.getElementById('f-cm-return').value=''">clear date</button></label><input type="date" class="form-input" id="f-cm-return"></div>
+          <div class="form-group"><label class="form-label" style="display:flex;align-items:center;">RM Final Review Done <span class="info-icon">i<span class="tooltip-text">Deadline for final budget draft to be completed prior to sending to the client. This should align with the Budget Due Date to Client per PMA</span></span><button type="button" class="clear-date-link" onclick="document.getElementById('f-rm-review').value=''">clear date</button></label><input type="date" class="form-input" id="f-rm-review"></div>
+          <div class="form-group"><label class="form-label" style="display:flex;align-items:center;">Final Budget Sent to Client<button type="button" class="clear-date-link" onclick="document.getElementById('f-final').value='';calcMetPMA()">clear date</button></label><input type="date" class="form-input" id="f-final" oninput="calcMetPMA()"></div>
+          <div class="form-group"><label class="form-label" style="display:flex;align-items:center;">Budget Approved by Client<button type="button" class="clear-date-link" onclick="document.getElementById('f-approved').value=''">clear date</button></label><input type="date" class="form-input" id="f-approved"></div>
+          <div class="form-group"><label class="form-label" style="display:flex;align-items:center;">Signed Approval Letter Received<button type="button" class="clear-date-link" onclick="document.getElementById('f-approval-letter').value=''">clear date</button></label><input type="date" class="form-input" id="f-approval-letter"></div>
+          <div class="form-group"><label class="form-label" style="display:flex;align-items:center;">Ticket Opened with Budget Support <span class="info-icon">i<span class="tooltip-text">Please include the signed approval form or approval email when submitting the support request.</span></span><button type="button" class="clear-date-link" onclick="document.getElementById('f-ticket').value=''">clear date</button></label><input type="date" class="form-input" id="f-ticket"></div>
           <div class="form-group">
-            <label class="form-label">Met PMA Deadline <span class="info-icon">i<span class="tooltip-text">Determined by date the approval is received being before or after the Budget Due to Client per PMA</span></span></label>
+            <label class="form-label" style="display:flex;align-items:center;">Met PMA Deadline <span class="info-icon">i<span class="tooltip-text">Determined by date the approval is received being before or after the Budget Due to Client per PMA</span></span></label>
             <div id="f-pma-display" style="padding-top:6px;font-size:13px;color:var(--text3);">— auto-calculated</div>
             <input type="hidden" id="f-pma-val">
           </div>
@@ -585,7 +585,7 @@
       </div>
       <div class="form-section">
         <div class="form-section-title">Notes</div>
-        <div class="form-grid cols1"><div class="form-group"><label class="form-label">Comments</label><textarea class="form-textarea" id="f-comments"></textarea></div></div>
+        <div class="form-grid cols1"><div class="form-group"><label class="form-label" style="display:flex;align-items:center;">Comments</label><textarea class="form-textarea" id="f-comments"></textarea></div></div>
       </div>
     </div>
     <div class="modal-footer">
@@ -615,16 +615,16 @@
       <div class="form-section">
         <div class="form-section-title">Budget Due Date Timeline (Apply to All Selected)</div>
         <div class="form-grid">
-          <div class="form-group"><label class="form-label">Forecast Completed <span class="info-icon">i<span class="tooltip-text">This should be completed prior to Regional Budget Workshop</span></span></label><input type="date" class="form-input" id="b-forecast"></div>
-          <div class="form-group"><label class="form-label">First Draft to RM</label><input type="date" class="form-input" id="b-draft-rm"></div>
-          <div class="form-group"><label class="form-label">First Draft Sent to RVP <span class="info-icon">i<span class="tooltip-text">Regional Manager to complete revisions or work directly with Community Manager to complete revisions</span></span></label><input type="date" class="form-input" id="b-draft"></div>
-          <div class="form-group"><label class="form-label">RVP Returned</label><input type="date" class="form-input" id="b-rvp-return"></div>
-          <div class="form-group"><label class="form-label">Returned to CM <span class="info-icon">i<span class="tooltip-text">Regional Manager to review the request and review this with the Community Manager to make final edits</span></span></label><input type="date" class="form-input" id="b-cm-return"></div>
-          <div class="form-group"><label class="form-label">RM Final Review</label><input type="date" class="form-input" id="b-rm-review"></div>
-          <div class="form-group"><label class="form-label">Final Budget Sent</label><input type="date" class="form-input" id="b-final" oninput="recalcAllBulkPMA()"></div>
-          <div class="form-group"><label class="form-label">Client Approved</label><input type="date" class="form-input" id="b-approved"></div>
-          <div class="form-group"><label class="form-label">Written Approval Received</label><input type="date" class="form-input" id="b-approval-letter"></div>
-          <div class="form-group"><label class="form-label">Ticket Opened with Budget Support</label><input type="date" class="form-input" id="b-ticket"></div>
+          <div class="form-group"><label class="form-label" style="display:flex;align-items:center;">Forecast Completed <span class="info-icon">i<span class="tooltip-text">This should be completed prior to Regional Budget Workshop</span></span></label><input type="date" class="form-input" id="b-forecast"></div>
+          <div class="form-group"><label class="form-label" style="display:flex;align-items:center;">First Draft to RM</label><input type="date" class="form-input" id="b-draft-rm"></div>
+          <div class="form-group"><label class="form-label" style="display:flex;align-items:center;">First Draft Sent to RVP <span class="info-icon">i<span class="tooltip-text">Regional Manager to complete revisions or work directly with Community Manager to complete revisions</span></span></label><input type="date" class="form-input" id="b-draft"></div>
+          <div class="form-group"><label class="form-label" style="display:flex;align-items:center;">RVP Returned</label><input type="date" class="form-input" id="b-rvp-return"></div>
+          <div class="form-group"><label class="form-label" style="display:flex;align-items:center;">Returned to CM <span class="info-icon">i<span class="tooltip-text">Regional Manager to review the request and review this with the Community Manager to make final edits</span></span></label><input type="date" class="form-input" id="b-cm-return"></div>
+          <div class="form-group"><label class="form-label" style="display:flex;align-items:center;">RM Final Review</label><input type="date" class="form-input" id="b-rm-review"></div>
+          <div class="form-group"><label class="form-label" style="display:flex;align-items:center;">Final Budget Sent</label><input type="date" class="form-input" id="b-final" oninput="recalcAllBulkPMA()"></div>
+          <div class="form-group"><label class="form-label" style="display:flex;align-items:center;">Client Approved</label><input type="date" class="form-input" id="b-approved"></div>
+          <div class="form-group"><label class="form-label" style="display:flex;align-items:center;">Written Approval Received</label><input type="date" class="form-input" id="b-approval-letter"></div>
+          <div class="form-group"><label class="form-label" style="display:flex;align-items:center;">Ticket Opened with Budget Support</label><input type="date" class="form-input" id="b-ticket"></div>
         </div>
       </div>
     </div>
