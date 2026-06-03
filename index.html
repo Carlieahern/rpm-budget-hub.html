@@ -1973,7 +1973,7 @@ async function applyBulkClearDates(){
     <div style="font-size:36px;margin-bottom:12px;">✅</div>
     <div style="font-size:16px;font-weight:700;color:var(--juniper);margin-bottom:8px;">Cleared Successfully</div>
     <div style="font-size:13px;color:var(--text2);margin-bottom:20px;">${msg}</div>
-    <button onclick="this.closest('div[style]').remove()" style="background:var(--juniper);color:white;border:none;border-radius:8px;padding:10px 28px;font-size:14px;font-weight:600;cursor:pointer;">Okay</button>
+    <button onclick="this.closest('div[style]').parentNode.remove()" style="background:var(--juniper);color:white;border:none;border-radius:8px;padding:10px 28px;font-size:14px;font-weight:600;cursor:pointer;">Okay</button>
   </div>`;
   document.body.appendChild(overlay);
 }
