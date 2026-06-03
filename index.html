@@ -199,6 +199,14 @@
   .backfill-banner{background:#fff8e7;border:1px solid var(--copper);border-radius:10px;padding:14px 18px;margin-bottom:12px;font-size:13px;color:var(--juniper);display:flex;align-items:center;gap:10px;}
 
   /* LOADING */
+
+  /* SYNC INDICATOR */
+  .sync-indicator{display:none;align-items:center;gap:6px;font-size:11px;color:rgba(255,255,255,.6);background:rgba(255,255,255,.08);border-radius:20px;padding:4px 10px;}
+  .sync-indicator.visible{display:flex;}
+  .sync-spin{width:12px;height:12px;border:2px solid rgba(255,255,255,.25);border-top-color:rgba(255,255,255,.8);border-radius:50%;animation:spin 0.7s linear infinite;flex-shrink:0;}
+  /* CLEAR DATE LINK */
+  .clear-date-link{display:block;font-size:10px;color:var(--copper);text-decoration:none;cursor:pointer;margin-top:3px;background:none;border:none;padding:0;font-family:var(--font);}
+  .clear-date-link:hover{text-decoration:underline;}
   .loading-overlay{display:none;position:fixed;inset:0;background:rgba(255,255,255,0.85);z-index:2000;align-items:center;justify-content:center;flex-direction:column;gap:14px;}
   .loading-overlay.visible{display:flex;}
   .spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--copper);border-radius:50%;animation:spin 0.7s linear infinite;}
@@ -352,6 +360,7 @@
         <button class="year-btn" id="btn-2028" onclick="switchYear(2028)">2028</button>
       </div>
     </div>
+    <div id="sync-indicator" class="sync-indicator"><div class="sync-spin"></div>Syncing...</div>
     <div class="header-right">
       <button class="btn btn-secondary" onclick="goToHub()" style="border-color:var(--juniper);color:var(--juniper);">⌂ Hub</button>
       <button class="btn btn-secondary" style="color:white;border-color:rgba(255,255,255,0.3);background:rgba(255,255,255,0.1)" onclick="exportCSV()">📥 Export CSV</button>
@@ -409,6 +418,7 @@
         <div class="bulk-bar" id="bulk-bar">
           <span><span class="bulk-count" id="bulk-count">0</span> selected</span>
           <button class="btn btn-secondary" onclick="openBulkEdit()">✏️ Bulk Edit Dates</button>
+          <button class="btn btn-secondary" onclick="openBulkClearDates()" style="border-color:#C0392B;color:#C0392B;">🗑 Clear Dates for All</button>
 <button class="btn btn-danger" onclick="clearSelection()">✕ Clear Selections</button>
         </div>
         <div class="table-wrap">
@@ -556,16 +566,16 @@
       <div class="form-section">
         <div class="form-section-title">Budget Due Date Timeline</div>
         <div class="form-grid">
-          <div class="form-group"><label class="form-label">Forecast Completed <span class="info-icon">i<span class="tooltip-text">This should be completed prior to Regional Budget Workshop</span></span></label><input type="date" class="form-input" id="f-forecast"></div>
-          <div class="form-group"><label class="form-label">First Draft Due to RM <span class="info-icon">i<span class="tooltip-text">Community Manager to begin budget at Regional Budget Workshop</span></span></label><input type="date" class="form-input" id="f-draft-rm"></div>
-          <div class="form-group"><label class="form-label">First Draft Sent to RVP <span class="info-icon">i<span class="tooltip-text">Regional Manager to complete revisions or work directly with Community Manager to complete revisions</span></span></label><input type="date" class="form-input" id="f-draft"></div>
-          <div class="form-group"><label class="form-label">RVP Returned to RM <span class="info-icon">i<span class="tooltip-text">RVP to complete initial review and return with requested revisions</span></span></label><input type="date" class="form-input" id="f-rvp-return"></div>
-          <div class="form-group"><label class="form-label">Returned to CM <span class="info-icon">i<span class="tooltip-text">Regional Manager to review the request and review this with the Community Manager to make final edits</span></span></label><input type="date" class="form-input" id="f-cm-return"></div>
-          <div class="form-group"><label class="form-label">RM Final Review Done <span class="info-icon">i<span class="tooltip-text">Deadline for final budget draft to be completed prior to sending to the client. This should align with the Budget Due Date to Client per PMA</span></span></label><input type="date" class="form-input" id="f-rm-review"></div>
+          <div class="form-group"><label class="form-label">Forecast Completed <span class="info-icon">i<span class="tooltip-text">This should be completed prior to Regional Budget Workshop</span></span></label><input type="date" class="form-input" id="f-forecast"><button type="button" class="clear-date-link" onclick="document.getElementById('f-forecast').value=''">clear date</button></div>
+          <div class="form-group"><label class="form-label">First Draft Due to RM <span class="info-icon">i<span class="tooltip-text">Community Manager to begin budget at Regional Budget Workshop</span></span></label><input type="date" class="form-input" id="f-draft-rm"><button type="button" class="clear-date-link" onclick="document.getElementById('f-draft-rm').value=''">clear date</button></div>
+          <div class="form-group"><label class="form-label">First Draft Sent to RVP <span class="info-icon">i<span class="tooltip-text">Regional Manager to complete revisions or work directly with Community Manager to complete revisions</span></span></label><input type="date" class="form-input" id="f-draft"><button type="button" class="clear-date-link" onclick="document.getElementById('f-draft').value=''">clear date</button></div>
+          <div class="form-group"><label class="form-label">RVP Returned to RM <span class="info-icon">i<span class="tooltip-text">RVP to complete initial review and return with requested revisions</span></span></label><input type="date" class="form-input" id="f-rvp-return"><button type="button" class="clear-date-link" onclick="document.getElementById('f-rvp-return').value=''">clear date</button></div>
+          <div class="form-group"><label class="form-label">Returned to CM <span class="info-icon">i<span class="tooltip-text">Regional Manager to review the request and review this with the Community Manager to make final edits</span></span></label><input type="date" class="form-input" id="f-cm-return"><button type="button" class="clear-date-link" onclick="document.getElementById('f-cm-return').value=''">clear date</button></div>
+          <div class="form-group"><label class="form-label">RM Final Review Done <span class="info-icon">i<span class="tooltip-text">Deadline for final budget draft to be completed prior to sending to the client. This should align with the Budget Due Date to Client per PMA</span></span></label><input type="date" class="form-input" id="f-rm-review"><button type="button" class="clear-date-link" onclick="document.getElementById('f-rm-review').value=''">clear date</button></div>
           <div class="form-group"><label class="form-label">Final Budget Sent to Client</label><input type="date" class="form-input" id="f-final" oninput="calcMetPMA()"></div>
-          <div class="form-group"><label class="form-label">Budget Approved by Client</label><input type="date" class="form-input" id="f-approved"></div>
-          <div class="form-group"><label class="form-label">Signed Approval Letter Received</label><input type="date" class="form-input" id="f-approval-letter"></div>
-          <div class="form-group"><label class="form-label">Ticket Opened with Budget Support <span class="info-icon">i<span class="tooltip-text">Please include the signed approval form or approval email when submitting the support request.</span></span></label><input type="date" class="form-input" id="f-ticket"></div>
+          <div class="form-group"><label class="form-label">Budget Approved by Client</label><input type="date" class="form-input" id="f-approved"><button type="button" class="clear-date-link" onclick="document.getElementById('f-approved').value=''">clear date</button></div>
+          <div class="form-group"><label class="form-label">Signed Approval Letter Received</label><input type="date" class="form-input" id="f-approval-letter"><button type="button" class="clear-date-link" onclick="document.getElementById('f-approval-letter').value=''">clear date</button></div>
+          <div class="form-group"><label class="form-label">Ticket Opened with Budget Support <span class="info-icon">i<span class="tooltip-text">Please include the signed approval form or approval email when submitting the support request.</span></span></label><input type="date" class="form-input" id="f-ticket"><button type="button" class="clear-date-link" onclick="document.getElementById('f-ticket').value=''">clear date</button></div>
           <div class="form-group">
             <label class="form-label">Met PMA Deadline <span class="info-icon">i<span class="tooltip-text">Determined by date the approval is received being before or after the Budget Due to Client per PMA</span></span></label>
             <div id="f-pma-display" style="padding-top:6px;font-size:13px;color:var(--text3);">— auto-calculated</div>
@@ -625,6 +635,19 @@
   </div>
 </div>
 
+
+<!-- BULK CLEAR DATES MODAL -->
+<div class="year-switch-overlay" id="bulk-clear-dates-modal">
+  <div class="year-switch-modal" style="max-width:500px;">
+    <div class="year-switch-icon">🗑</div>
+    <div class="year-switch-title">Clear Timeline Dates</div>
+    <div class="year-switch-sub" id="bulk-clear-dates-sub"></div>
+    <div class="year-switch-actions">
+      <button class="btn btn-secondary" onclick="document.getElementById('bulk-clear-dates-modal').classList.remove('open')">Cancel</button>
+      <button class="btn" style="background:#C0392B;color:white;border:none;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:600;cursor:pointer;" onclick="applyBulkClearDates()">Yes, Clear Dates</button>
+    </div>
+  </div>
+</div>
 
 <div class="loading-overlay" id="loading"><div class="spinner"></div><div class="loading-text" id="loading-text">Loading...</div></div>
 <div class="toast-container" id="toast-container"></div>
@@ -1906,10 +1929,60 @@ function openModal(id){
 }
 function closeModal(id){document.getElementById(id).classList.remove('open');}
 document.querySelectorAll('.modal-overlay').forEach(o=>{o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open');});});
+// ============================================================
+// BULK CLEAR DATES
+// ============================================================
+function openBulkClearDates(){
+  if(!selectedIds.size) return;
+  const names = [...selectedIds].map(id => {
+    const p = allProperties.find(x => x.id === id);
+    return p ? p.name : id;
+  });
+  const list = names.map(n => `• ${n}`).join('<br>');
+  document.getElementById('bulk-clear-dates-sub').innerHTML =
+    `Are you sure you want to clear all Budget Due Date Timeline dates for:<br><br><div style="text-align:left;max-height:200px;overflow-y:auto;background:rgba(0,0,0,.04);border-radius:8px;padding:10px 14px;font-size:12px;line-height:1.8;">${list}</div>`;
+  document.getElementById('bulk-clear-dates-modal').classList.add('open');
+}
+
+async function applyBulkClearDates(){
+  document.getElementById('bulk-clear-dates-modal').classList.remove('open');
+  const timelineCols = [
+    COL.forecastCompleted, COL.firstDraftRM, COL.firstDraftActual,
+    COL.rvpReturnActual, COL.cmReturnActual, COL.rmReviewActual,
+    COL.finalSentActual, COL.clientApproved, COL.approvalLetter, COL.ticketOpened
+  ].filter(Boolean);
+  if(!timelineCols.length){ showToast('No timeline columns found','error'); return; }
+  const clearVals = {};
+  timelineCols.forEach(colId => { clearVals[colId] = ''; });
+  showLoading(`Clearing dates for ${selectedIds.size} properties...`);
+  const ids = [...selectedIds];
+  let success=0, failed=0;
+  for(const id of ids){
+    try{
+      await mondayQuery(`mutation { change_multiple_column_values(board_id:${BOARD_ID},item_id:${id},column_values:${JSON.stringify(JSON.stringify(clearVals))}) { id } }`);
+      success++;
+    } catch{ failed++; }
+  }
+  clearSelection();
+  await loadItems();
+  const msg = `Cleared successfully — ${success} propert${success===1?'y':'ies'} updated${failed>0?', '+failed+' failed':''}`;
+  // Show custom success alert
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:4000;display:flex;align-items:center;justify-content:center;';
+  overlay.innerHTML = `<div style="background:white;border-radius:14px;padding:32px;text-align:center;max-width:380px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.2);">
+    <div style="font-size:36px;margin-bottom:12px;">✅</div>
+    <div style="font-size:16px;font-weight:700;color:var(--juniper);margin-bottom:8px;">Cleared Successfully</div>
+    <div style="font-size:13px;color:var(--text2);margin-bottom:20px;">${msg}</div>
+    <button onclick="this.closest('div[style]').remove()" style="background:var(--juniper);color:white;border:none;border-radius:8px;padding:10px 28px;font-size:14px;font-weight:600;cursor:pointer;">Okay</button>
+  </div>`;
+  document.body.appendChild(overlay);
+}
+
 function showLoading(t){
   const el=document.getElementById('loading-text');
   el.textContent=t||'Loading...';
   document.getElementById('loading').classList.add('visible');
+  document.getElementById('sync-indicator')?.classList.add('visible');
   // Clear any existing timers
   if(window._loadTimer1) clearTimeout(window._loadTimer1);
   if(window._loadTimer2) clearTimeout(window._loadTimer2);
@@ -1928,6 +2001,7 @@ function showLoading(t){
 }
 function hideLoading(){
   document.getElementById('loading').classList.remove('visible');
+  document.getElementById('sync-indicator')?.classList.remove('visible');
   if(window._loadTimer1) clearTimeout(window._loadTimer1);
   if(window._loadTimer2) clearTimeout(window._loadTimer2);
 }
