@@ -268,15 +268,12 @@
         <div style="margin-top:12px;display:inline-flex;align-items:center;gap:6px;background:#B87333;color:white;padding:5px 12px;border-radius:20px;font-size:11px;font-weight:700;">Open →</div>
       </button>
 
-      <div id="assumptions-tile" style="background:white;border:2px solid #dde0e8;border-radius:14px;padding:24px 20px;text-align:left;opacity:0.6;cursor:not-allowed;transition:all .2s;">
+      <button onclick="openAssumptionsApp()" id="assumptions-tile" style="background:white;border:2px solid #B87333;border-radius:14px;padding:24px 20px;text-align:left;cursor:pointer;transition:all .2s;font-family:inherit;">
         <div style="font-size:24px;margin-bottom:10px;">📊</div>
         <div style="font-size:15px;font-weight:700;color:#3D4F4A;margin-bottom:4px;">Budget Assumptions</div>
         <div style="font-size:12px;color:#8b92a8;line-height:1.5;">Manage and verify annual program cost assumptions by department.</div>
-        <div style="margin-top:12px;">
-          <span id="assumptions-locked-badge" style="display:inline-flex;align-items:center;gap:6px;background:#e4e6ec;color:#8b92a8;padding:5px 12px;border-radius:20px;font-size:11px;font-weight:700;">🔒 Admin Only</span>
-          <span id="assumptions-admin-link" onclick="openAssumptionsApp()" style="display:none;align-items:center;gap:6px;background:#B87333;color:white;padding:5px 12px;border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;">Open →</span>
-        </div>
-      </div>
+        <div style="margin-top:12px;display:inline-flex;align-items:center;gap:6px;background:#B87333;color:white;padding:5px 12px;border-radius:20px;font-size:11px;font-weight:700;">Open →</div>
+      </button>
 
       <div id="approval-tile" style="background:white;border:2px solid #dde0e8;border-radius:14px;padding:24px 20px;text-align:left;opacity:0.6;cursor:not-allowed;transition:all .2s;">
   <div style="font-size:24px;margin-bottom:10px;">✅</div>
@@ -806,24 +803,8 @@ function openApprovalApp() {
 
 // Budget Assumptions app (separate Vercel deployment) — admin only
 const ASSUMPTIONS_URL = 'https://rpm-budget-assumptions.vercel.app';
-function setAssumptionsTile(adminAccess) {
-  const tile = document.getElementById('assumptions-tile');
-  const link = document.getElementById('assumptions-admin-link');
-  const badge = document.getElementById('assumptions-locked-badge');
-  if (!tile) return;
-  if (adminAccess) {
-    tile.style.opacity = '1';
-    tile.style.cursor = 'default';
-    tile.style.borderColor = '#B87333';
-    link.style.display = 'inline-flex';
-    badge.style.display = 'none';
-  } else {
-    tile.style.opacity = '0.6';
-    tile.style.cursor = 'not-allowed';
-    tile.style.borderColor = '#dde0e8';
-    link.style.display = 'none';
-    badge.style.display = 'inline-flex';
-  }
+function setAssumptionsTile() {
+  // Budget Assumptions is open to all users — the tile is always clickable.
 }
 
 function openAssumptionsApp() {
