@@ -707,12 +707,16 @@ let activitySessionItemId = null;
 // INIT
 // ============================================================
 window.addEventListener('DOMContentLoaded', () => {
-  const returning = localStorage.getItem('rpm_hub_return');
+  // Prefer an explicit return payload; otherwise fall back to the persisted hub
+  // user so coming back from another app (e.g. Budget Assumptions) lands on the
+  // tiles instead of forcing a fresh login.
+  let returning = localStorage.getItem('rpm_hub_return');
+  if (returning) localStorage.removeItem('rpm_hub_return');
+  else returning = localStorage.getItem('rpm_hub_user');
   if (returning) {
-    localStorage.removeItem('rpm_hub_return');
     try {
       const u = JSON.parse(returning);
-      if (u.name) {
+      if (u && u.name) {
         currentUser = {firstName: u.firstName||'', lastName: u.lastName||'', name: u.name, email: u.email||'', position: u.position||'', isAdmin: !!u.isAdmin};
         isAdmin = !!u.isAdmin;
         document.getElementById('hub-login').style.display = 'none';
