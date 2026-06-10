@@ -707,12 +707,13 @@ let activitySessionItemId = null;
 // INIT
 // ============================================================
 window.addEventListener('DOMContentLoaded', () => {
-  // Prefer an explicit return payload; otherwise fall back to the persisted hub
-  // user so coming back from another app (e.g. Budget Assumptions) lands on the
-  // tiles instead of forcing a fresh login.
+  // Show the login on a fresh/initial visit. Only skip it when the user is
+  // explicitly coming BACK from a linked app (e.g. Budget Assumptions), which
+  // appends ?return=1 — then reuse their stored session and go to the tiles.
+  const cameFromApp = new URLSearchParams(location.search).get('return') === '1';
   let returning = localStorage.getItem('rpm_hub_return');
   if (returning) localStorage.removeItem('rpm_hub_return');
-  else returning = localStorage.getItem('rpm_hub_user');
+  else if (cameFromApp) returning = localStorage.getItem('rpm_hub_user');
   if (returning) {
     try {
       const u = JSON.parse(returning);
