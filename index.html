@@ -709,9 +709,13 @@ let activitySessionItemId = null;
 // INIT
 // ============================================================
 window.addEventListener('DOMContentLoaded', () => {
-  const returning = localStorage.getItem('rpm_hub_return');
+  // Same-origin apps return via rpm_hub_return. A cross-origin app (Budget
+  // Assumptions) can't write our storage, so it returns with ?return=1 — in that
+  // case reuse the saved hub user and go to the tiles instead of the login.
+  let returning = localStorage.getItem('rpm_hub_return');
+  if (returning) localStorage.removeItem('rpm_hub_return');
+  else if (new URLSearchParams(location.search).get('return') === '1') returning = localStorage.getItem('rpm_hub_user');
   if (returning) {
-    localStorage.removeItem('rpm_hub_return');
     try {
       const u = JSON.parse(returning);
       if (u.name) {
