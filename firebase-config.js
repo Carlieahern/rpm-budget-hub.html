@@ -1,10 +1,8 @@
-// Fill these in once the Firebase project is created (Firestore + Anonymous Auth enabled).
-// Project settings (gear icon) > General > Add app > Web > copy the config object here.
 const FIREBASE_CONFIG = {
-  apiKey: "REPLACE_ME",
-  authDomain: "REPLACE_ME.firebaseapp.com",
-  projectId: "REPLACE_ME",
-  storageBucket: "REPLACE_ME.appspot.com",
-  messagingSenderId: "REPLACE_ME",
-  appId: "REPLACE_ME"
+  apiKey: "AIzaSyCnMcvZgv5yXsjojl-fd5oTVlO-vEyOBEo",
+  authDomain: "due-date-tracker-activity.firebaseapp.com",
+  projectId: "due-date-tracker-activity",
+  storageBucket: "due-date-tracker-activity.firebasestorage.app",
+  messagingSenderId: "446138013805",
+  appId: "1:446138013805:web:adb9910b69b08e07bc4764"
 };
