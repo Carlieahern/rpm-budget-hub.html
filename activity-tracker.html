@@ -140,7 +140,7 @@
       <th>Date / Time</th><th>Name</th><th>Role</th><th>Tool</th><th>Property</th><th>Description</th>
     </tr></thead><tbody>` + rows.map(r => {
       const d = r.timestamp?.toDate ? r.timestamp.toDate() : new Date(r.clientTime);
-      const ds = d.toLocaleString('en-US', { month:'short', day:'numeric', year:'numeric', hour:'2-digit', minute:'2-digit' });
+      const ds = d.toLocaleString('en-US', { month:'short', day:'numeric', year:'numeric', hour:'2-digit', minute:'2-digit', timeZoneName:'short' });
       return `<tr>
         <td class="mono">${ds}</td>
         <td>${esc(r.name)}<br><span class="muted" style="font-size:11px;">${esc(r.email)}</span></td>
