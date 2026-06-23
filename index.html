@@ -294,9 +294,9 @@
         <div style="margin-top:12px;display:inline-flex;align-items:center;gap:6px;background:#e4e6ec;color:#8b92a8;padding:5px 12px;border-radius:20px;font-size:11px;font-weight:700;">Coming Soon</div>
       </div>
 
-      <button onclick="window.open('activity-tracker.html','_blank')" style="background:#1e2d4a;border:2px solid #B87333;border-radius:16px;padding:26px 22px;text-align:left;cursor:pointer;transition:all 0.2s;box-shadow:0 4px 20px rgba(0,0,0,0.3);font-family:inherit;" onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 8px 32px rgba(184,115,51,0.3)'" onmouseout="this.style.transform='';this.style.boxShadow='0 4px 20px rgba(0,0,0,0.3)'">
+      <button onclick="openActivityTracker()" style="background:#1e2d4a;border:2px solid #B87333;border-radius:16px;padding:26px 22px;text-align:left;cursor:pointer;transition:all 0.2s;box-shadow:0 4px 20px rgba(0,0,0,0.3);font-family:inherit;" onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 8px 32px rgba(184,115,51,0.3)'" onmouseout="this.style.transform='';this.style.boxShadow='0 4px 20px rgba(0,0,0,0.3)'">
         <div style="font-size:24px;margin-bottom:10px;">📈</div>
-        <div style="font-size:15px;font-weight:700;color:#ffffff;margin-bottom:4px;">Activity Tracker</div>
+        <div style="font-size:15px;font-weight:700;color:#ffffff;margin-bottom:4px;">Activity</div>
         <div style="font-size:12px;color:rgba(255,255,255,0.5);line-height:1.5;">See who accessed each tool, when, and what they changed.</div>
         <div style="margin-top:12px;display:inline-flex;align-items:center;gap:6px;background:#B87333;color:white;padding:5px 12px;border-radius:20px;font-size:11px;font-weight:700;">Open →</div>
       </button>
@@ -822,6 +822,12 @@ function setAssumptionsTile() {
 function openAssumptionsApp() {
   localStorage.setItem('rpm_hub_user', JSON.stringify({...currentUser, isAdmin}));
   window.location.href = ASSUMPTIONS_URL;
+}
+
+function openActivityTracker() {
+  localStorage.setItem('rpm_hub_user', JSON.stringify({...currentUser, isAdmin}));
+  localStorage.setItem('rpm_hub_return', JSON.stringify({...currentUser, isAdmin}));
+  window.location.href = 'activity-tracker.html';
 }
 
 async function launchTracker() {

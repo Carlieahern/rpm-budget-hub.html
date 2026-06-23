@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Activity Tracker — RPM Budget Hub</title>
+<title>Activity — RPM Budget Hub</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -39,16 +39,21 @@
   .empty { text-align:center; padding:60px 20px; color:var(--text3); }
   .loading { text-align:center; padding:60px 20px; color:var(--text2); }
   .count { font-size:12px; color:var(--text3); margin-top:10px; }
+  .back-link { display:inline-flex; align-items:center; gap:6px; background:rgba(255,255,255,0.07); border:1px solid var(--border); color:#fff; padding:7px 14px; border-radius:8px; font-size:13px; font-weight:500; cursor:pointer; font-family:var(--font); text-decoration:none; transition:border-color .2s; }
+  .back-link:hover { border-color:var(--copper); }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <div class="header">
-    <img src="RPMLivingLogo__Copper.jpg" alt="RPM">
-    <div>
-      <h1>Activity Tracker</h1>
-      <div class="sub">Who accessed what, when, and what changed.</div>
+  <div class="header" style="justify-content:space-between;">
+    <div style="display:flex;align-items:center;gap:14px;">
+      <img src="RPMLivingLogo__Copper.jpg" alt="RPM">
+      <div>
+        <h1>Activity</h1>
+        <div class="sub">Who accessed what, when, and what changed.</div>
+      </div>
     </div>
+    <a href="#" class="back-link" onclick="backToHub()">← Back to Hub</a>
   </div>
 
   <div class="toolbar">
@@ -155,6 +160,12 @@
   };
   window.loadActivity = loadActivity;
   window.applyFilters = applyFilters;
+  window.backToHub = (e) => {
+    if (e) e.preventDefault();
+    const hubUser = localStorage.getItem('rpm_hub_user');
+    if (hubUser) localStorage.setItem('rpm_hub_return', hubUser);
+    window.location.href = 'index.html';
+  };
 
   loadActivity();
 </script>
