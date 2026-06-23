@@ -21,6 +21,7 @@ function _ensureFirebase() {
 async function logToFirebase(entry) {
   try {
     await _ensureFirebase();
+    const expireAt = new Date(Date.now() + 60 * 24 * 60 * 60 * 1000); // 60-day retention (Firestore TTL field)
     await _fbMod.addDoc(_fbMod.collection(_fbDb, 'activity_log'), {
       name: entry.name || 'Unknown',
       email: entry.email || '',
@@ -30,7 +31,9 @@ async function logToFirebase(entry) {
       property: entry.property || '',
       description: entry.description || entry.action || '',
       timestamp: _fbMod.serverTimestamp(),
-      clientTime: new Date().toISOString()
+      clientTime: new Date().toISOString(),
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      expireAt: _fbMod.Timestamp.fromDate(expireAt)
     });
   } catch (e) {
     console.warn('Firebase activity log failed', e);
