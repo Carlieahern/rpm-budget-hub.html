@@ -749,6 +749,7 @@ function submitHubLogin() {
   currentUser = {firstName, lastName, name: firstName + ' ' + lastName, email, position: role, isAdmin: false};
   isAdmin = false;
   localStorage.setItem('rpm_hub_user', JSON.stringify(currentUser));
+  logToFirebase({name: currentUser.name, email: currentUser.email, role: currentUser.position, tool: 'RPM Budget Hub', action: 'Hub Login', description: 'Logged into the RPM Budget Hub'});
   document.getElementById('hub-login').style.display = 'none';
   document.getElementById('setup-screen').style.display = 'flex';
   setApprovalTile(false);
@@ -780,6 +781,7 @@ function verifyAdminLogin() {
   currentUser = {firstName: name, lastName: '', name, email: '', position: 'Budget Admin', isAdmin: true};
   isAdmin = true;
   localStorage.setItem('rpm_hub_user', JSON.stringify(currentUser));
+  logToFirebase({name: currentUser.name, email: currentUser.email, role: currentUser.position, tool: 'RPM Budget Hub', action: 'Admin Login', description: 'Logged into the RPM Budget Hub as Admin'});
   closeAdminLoginModal();
   document.getElementById('hub-login').style.display = 'none';
   document.getElementById('setup-screen').style.display = 'flex';
