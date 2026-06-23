@@ -64,7 +64,10 @@
       <option value="Budget Assumptions">Budget Assumptions</option>
     </select>
     <input type="text" id="search-filter" placeholder="Search name, email, property..." oninput="applyFilters()" style="min-width:220px;">
-    <input type="date" id="date-filter" onchange="applyFilters()">
+    <span style="color:var(--text3);font-size:12px;">From</span>
+    <input type="date" id="date-from-filter" onchange="applyFilters()">
+    <span style="color:var(--text3);font-size:12px;">To</span>
+    <input type="date" id="date-to-filter" onchange="applyFilters()">
     <button class="btn-secondary" onclick="clearFilters()">Clear Filters</button>
     <button class="btn" onclick="loadActivity()">↻ Refresh</button>
   </div>
@@ -93,7 +96,7 @@
     document.getElementById('table-wrap').innerHTML = '<div class="loading">Loading activity…</div>';
     try {
       await signInAnonymously(auth);
-      const q = query(collection(db, 'activity_log'), orderBy('timestamp', 'desc'), limit(500));
+      const q = query(collection(db, 'activity_log'), orderBy('timestamp', 'desc'), limit(1000));
       const snap = await getDocs(q);
       allRows = snap.docs.map(d => d.data());
       applyFilters();
@@ -105,7 +108,8 @@
   function applyFilters() {
     const tool = document.getElementById('tool-filter').value;
     const search = document.getElementById('search-filter').value.toLowerCase().trim();
-    const date = document.getElementById('date-filter').value;
+    const dateFrom = document.getElementById('date-from-filter').value;
+    const dateTo = document.getElementById('date-to-filter').value;
     let rows = allRows;
     if (tool) rows = rows.filter(r => r.tool === tool);
     if (search) rows = rows.filter(r =>
@@ -114,9 +118,13 @@
       (r.property||'').toLowerCase().includes(search) ||
       (r.description||'').toLowerCase().includes(search)
     );
-    if (date) rows = rows.filter(r => {
+    if (dateFrom) rows = rows.filter(r => {
       const d = r.timestamp?.toDate ? r.timestamp.toDate() : new Date(r.clientTime);
-      return d.toISOString().slice(0,10) === date;
+      return d.toISOString().slice(0,10) >= dateFrom;
+    });
+    if (dateTo) rows = rows.filter(r => {
+      const d = r.timestamp?.toDate ? r.timestamp.toDate() : new Date(r.clientTime);
+      return d.toISOString().slice(0,10) <= dateTo;
     });
     renderRows(rows);
   }
@@ -155,7 +163,8 @@
   window.clearFilters = () => {
     document.getElementById('tool-filter').value = '';
     document.getElementById('search-filter').value = '';
-    document.getElementById('date-filter').value = '';
+    document.getElementById('date-from-filter').value = '';
+    document.getElementById('date-to-filter').value = '';
     applyFilters();
   };
   window.loadActivity = loadActivity;
@@ -166,6 +175,9 @@
     if (hubUser) localStorage.setItem('rpm_hub_return', hubUser);
     window.location.href = 'index.html';
   };
+
+  const presetTool = new URLSearchParams(location.search).get('tool');
+  if (presetTool) document.getElementById('tool-filter').value = presetTool;
 
   loadActivity();
 </script>
