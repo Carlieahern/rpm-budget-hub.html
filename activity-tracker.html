@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Activity Tracker — RPM Budget Hub</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --copper: #B87333; --navy: #192336; --card: #1e2d4a;
+    --text2: rgba(255,255,255,0.55); --text3: rgba(255,255,255,0.35);
+    --border: rgba(255,255,255,0.12);
+    --font: 'DM Sans', sans-serif; --mono: 'DM Mono', monospace;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:var(--font); background:var(--navy); color:#fff; min-height:100vh; font-size:14px; }
+  .wrap { max-width:1200px; margin:0 auto; padding:32px 24px 60px; }
+  .header { display:flex; align-items:center; gap:14px; margin-bottom:24px; }
+  .header img { width:44px; height:auto; background:white; border-radius:10px; padding:6px 8px; }
+  .header h1 { font-size:22px; font-weight:700; }
+  .header .sub { font-size:13px; color:var(--text2); margin-top:2px; }
+  .toolbar { display:flex; gap:10px; align-items:center; margin-bottom:20px; flex-wrap:wrap; }
+  select, input { background:rgba(255,255,255,0.07); border:1px solid var(--border); border-radius:8px; padding:8px 12px; color:#fff; font-family:var(--font); font-size:13px; outline:none; }
+  select:focus, input:focus { border-color:var(--copper); }
+  select option { background:var(--card); color:#fff; }
+  .btn { background:var(--copper); color:white; border:none; border-radius:8px; padding:8px 16px; font-size:13px; font-weight:600; cursor:pointer; font-family:var(--font); }
+  .btn:hover { background:#9e6229; }
+  .btn-secondary { background:rgba(255,255,255,0.07); border:1px solid var(--border); color:#fff; }
+  .btn-secondary:hover { border-color:var(--copper); }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:14px; overflow:hidden; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th { text-align:left; padding:11px 14px; font-size:11px; font-weight:600; color:var(--text2); text-transform:uppercase; letter-spacing:0.5px; border-bottom:1px solid var(--border); white-space:nowrap; }
+  td { padding:11px 14px; border-bottom:1px solid var(--border); vertical-align:top; }
+  tr:last-child td { border-bottom:none; }
+  tr:hover td { background:rgba(255,255,255,0.03); }
+  .pill { display:inline-flex; padding:2px 9px; border-radius:20px; font-size:11px; font-weight:600; background:rgba(184,115,51,0.18); color:#e0a060; }
+  .muted { color:var(--text3); }
+  .mono { font-family:var(--mono); font-size:12px; color:var(--text2); white-space:nowrap; }
+  .empty { text-align:center; padding:60px 20px; color:var(--text3); }
+  .loading { text-align:center; padding:60px 20px; color:var(--text2); }
+  .count { font-size:12px; color:var(--text3); margin-top:10px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <img src="RPMLivingLogo__Copper.jpg" alt="RPM">
+    <div>
+      <h1>Activity Tracker</h1>
+      <div class="sub">Who accessed what, when, and what changed.</div>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <select id="tool-filter" onchange="applyFilters()">
+      <option value="">All Tools</option>
+      <option value="Budget Due Date Tracker">Budget Due Date Tracker</option>
+      <option value="Budget Assumptions">Budget Assumptions</option>
+    </select>
+    <input type="text" id="search-filter" placeholder="Search name, email, property..." oninput="applyFilters()" style="min-width:220px;">
+    <input type="date" id="date-filter" onchange="applyFilters()">
+    <button class="btn-secondary" onclick="clearFilters()">Clear Filters</button>
+    <button class="btn" onclick="loadActivity()">↻ Refresh</button>
+  </div>
+
+  <div class="card">
+    <div id="table-wrap">
+      <div class="loading">Loading activity…</div>
+    </div>
+  </div>
+  <div class="count" id="row-count"></div>
+</div>
+
+<script src="firebase-config.js"></script>
+<script type="module">
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+  import { getAuth, signInAnonymously } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+  import { getFirestore, collection, getDocs, query, orderBy, limit } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+  const app = initializeApp(FIREBASE_CONFIG);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+
+  let allRows = [];
+
+  async function loadActivity() {
+    document.getElementById('table-wrap').innerHTML = '<div class="loading">Loading activity…</div>';
+    try {
+      await signInAnonymously(auth);
+      const q = query(collection(db, 'activity_log'), orderBy('timestamp', 'desc'), limit(500));
+      const snap = await getDocs(q);
+      allRows = snap.docs.map(d => d.data());
+      applyFilters();
+    } catch (e) {
+      document.getElementById('table-wrap').innerHTML = '<div class="empty">Failed to load activity: ' + e.message + '</div>';
+    }
+  }
+
+  function applyFilters() {
+    const tool = document.getElementById('tool-filter').value;
+    const search = document.getElementById('search-filter').value.toLowerCase().trim();
+    const date = document.getElementById('date-filter').value;
+    let rows = allRows;
+    if (tool) rows = rows.filter(r => r.tool === tool);
+    if (search) rows = rows.filter(r =>
+      (r.name||'').toLowerCase().includes(search) ||
+      (r.email||'').toLowerCase().includes(search) ||
+      (r.property||'').toLowerCase().includes(search) ||
+      (r.description||'').toLowerCase().includes(search)
+    );
+    if (date) rows = rows.filter(r => {
+      const d = r.timestamp?.toDate ? r.timestamp.toDate() : new Date(r.clientTime);
+      return d.toISOString().slice(0,10) === date;
+    });
+    renderRows(rows);
+  }
+
+  function renderRows(rows) {
+    const wrap = document.getElementById('table-wrap');
+    document.getElementById('row-count').textContent = rows.length + ' entries';
+    if (!rows.length) {
+      wrap.innerHTML = '<div class="empty">No activity found.</div>';
+      return;
+    }
+    const html = `<table><thead><tr>
+      <th>Date / Time</th><th>Name</th><th>Role</th><th>Tool</th><th>Property</th><th>Description</th>
+    </tr></thead><tbody>` + rows.map(r => {
+      const d = r.timestamp?.toDate ? r.timestamp.toDate() : new Date(r.clientTime);
+      const ds = d.toLocaleString('en-US', { month:'short', day:'numeric', year:'numeric', hour:'2-digit', minute:'2-digit' });
+      return `<tr>
+        <td class="mono">${ds}</td>
+        <td>${esc(r.name)}<br><span class="muted" style="font-size:11px;">${esc(r.email)}</span></td>
+        <td>${esc(r.role) || '<span class="muted">—</span>'}</td>
+        <td><span class="pill">${esc(r.tool)}</span></td>
+        <td>${esc(r.property) || '<span class="muted">—</span>'}</td>
+        <td>${esc(r.description)}</td>
+      </tr>`;
+    }).join('') + '</tbody></table>';
+    wrap.innerHTML = html;
+  }
+
+  function esc(s) {
+    if (!s) return '';
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  window.clearFilters = () => {
+    document.getElementById('tool-filter').value = '';
+    document.getElementById('search-filter').value = '';
+    document.getElementById('date-filter').value = '';
+    applyFilters();
+  };
+  window.loadActivity = loadActivity;
+  window.applyFilters = applyFilters;
+
+  loadActivity();
+</script>
+</body>
+</html>
