@@ -186,6 +186,7 @@ tr.selected td{background:rgba(184,115,51,.05);}
     </div>
     <div class="header-right">
       <span id="header-user" style="font-size:12px;color:var(--text2);"></span>
+      <button class="btn btn-copper" onclick="openOccEntry()" title="Enter Occupancy">📊 Enter Occupancy</button>
       <button class="btn btn-secondary" id="sync-btn" onclick="syncMonday()" title="Sync Monday">🔄 Sync</button>
       <button class="btn btn-secondary" onclick="openSettings()" title="Settings" id="settings-btn" style="display:none;">⚙️</button>
       <button class="btn btn-secondary" onclick="goToHub()">⌂ Hub</button>
@@ -399,9 +400,22 @@ tr.selected td{background:rgba(184,115,51,.05);}
   </div>
 </div>
 
+<!-- Standalone occupancy entry -->
+<div class="modal-overlay" id="occ-entry-modal">
+  <div class="modal modal-lg">
+    <div class="modal-header"><div><div class="modal-title">📊 Enter Occupancy</div><div class="modal-subtitle">Submit budgeted occupancy for a property</div></div><button class="modal-close" onclick="closeModal('occ-entry-modal')">×</button></div>
+    <div class="modal-body" id="occ-entry-body"></div>
+    <div class="modal-footer" id="occ-entry-footer"></div>
+  </div>
+</div>
+
 <div class="loading-overlay" id="loading"><div class="spinner"></div><div style="color:var(--juniper);font-size:14px;font-weight:600;" id="loading-text">Syncing...</div></div>
 <div class="toast-container" id="toast-container"></div>
 <div class="loading-overlay" id="loading"><div class="spinner"></div><div class="loading-text" id="loading-text">Loading...</div></div>
+
+<!-- Shared Hub Firebase config + occupancy store (separate collection from activity logging) -->
+<script src="firebase-config.js"></script>
+<script src="occupancy-store.js"></script>
 
 <script>
 // ╔══════════════════════════════════════════════════════════════════╗
@@ -1151,6 +1165,10 @@ async function openTicket(){
 
   const newTicket={id:'t'+Date.now(),propId:props[0].id,propName:props.map(x=>x.name).join(', '),code:props.map(x=>x.code).join(', '),submittedBy:currentUser.name,position:currentUser.position,email:currentUser.email,dateSubmitted:today,isReopen:false,adminChecks:{imported:false,finalized:false,occDone:false},status:'Ticket Submitted',uploadedFile:S.uploadedFile};
   ticketQueue.push(newTicket);
+  // Persist occupancy (Firebase dedup memory + SharePoint) for each property if entered.
+  if(OCC_MONTHS.some(([k])=>S.occupancy[k]!=='')){
+    for(const p of props){await persistOccupancy(p.pmsSystem||'',p.code,currentYear,S.occupancy);}
+  }
   logActivity('Budget Ticket Submitted',{property:props.map(p=>p.name).join(', ')});
   closeModal('submit-modal');clearSelection();
   document.getElementById('ticket-body').innerHTML=`<div class="info-box success" style="margin-bottom:14px;">✓ Status updated in Monday. Click Open in Zendesk to complete your ticket.</div>
@@ -1240,6 +1258,104 @@ function handleReopenFile(input){
     renderReopenStep();
     uploadFileToMonday(RS.propId,file);
   }
+}
+
+// ── OCCUPANCY PERSISTENCE (shared) ──
+const OCC_MONTHS=[['jan','January'],['feb','February'],['mar','March'],['apr','April'],['may','May'],['jun','June'],['jul','July'],['aug','August'],['sep','September'],['oct','October'],['nov','November'],['dec','December']];
+
+// Build the SharePoint/Power Automate payload. Month values are sent as whole-number
+// percentages (e.g. 95) — the Power Automate flow divides by 100 before storing.
+function buildOccPayload(pms,code,year,occ,name,email){
+  const out={propertyManagementSystem:pms||'',propertyCode:String(code),budgetYear:Number(year),submitterName:name||'',submitterEmail:email||''};
+  OCC_MONTHS.forEach(([k,full])=>{out[full.toLowerCase()]=Number(occ[k])||0;});
+  return out;
+}
+async function sendOccupancyToSharePoint(payload){
+  const r=await fetch('/api/occupancy',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+  if(!r.ok)throw new Error('SharePoint send failed ('+r.status+')');
+}
+// Save to Firebase (dedup memory) + send to SharePoint (official record). Non-fatal on error.
+async function persistOccupancy(pms,code,year,occ){
+  try{
+    await saveOccupancySubmission({pms,propertyCode:code,budgetYear:year,occupancy:occ,submitterName:currentUser.name,submitterEmail:currentUser.email});
+    await sendOccupancyToSharePoint(buildOccPayload(pms,code,year,occ,currentUser.name,currentUser.email));
+    return true;
+  }catch(e){console.warn('persistOccupancy failed',e);toast('Occupancy did not fully save — check connection','warning');return false;}
+}
+
+// ── STANDALONE OCCUPANCY ENTRY ──
+let OE={};
+function openOccEntry(){
+  OE={pms:'',code:'',year:currentYear,occupancy:Object.fromEntries(OCC_MONTHS.map(([k])=>[k,''])),confirmReplace:false};
+  renderOccEntry();
+  document.getElementById('occ-entry-modal').classList.add('open');
+}
+function renderOccEntry(){
+  const body=document.getElementById('occ-entry-body');
+  const footer=document.getElementById('occ-entry-footer');
+  const grid=OCC_MONTHS.map(([k,l])=>`<div><label class="form-label">${l}</label>
+    <div style="position:relative;"><input type="number" class="form-input" step="any" min="0" max="100" placeholder="0" value="${OE.occupancy[k]}" oninput="OE.occupancy['${k}']=this.value" style="font-family:var(--mono);text-align:center;padding-right:22px;"><span style="position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:12px;">%</span></div></div>`).join('');
+  body.innerHTML=`<div class="form-section">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px;">
+        <div><label class="form-label">Budget System <span class="req">*</span></label>
+          <select class="form-select" onchange="OE.pms=this.value">
+            <option value="">Select...</option>
+            ${['Yardi','RealPage','Entrata'].map(s=>`<option ${OE.pms===s?'selected':''}>${s}</option>`).join('')}
+          </select></div>
+        <div><label class="form-label">Property Code <span class="req">*</span></label>
+          <input type="text" class="form-input" value="${esc(OE.code)}" oninput="OE.code=this.value" placeholder="e.g. 47823"></div>
+        <div><label class="form-label">Budget Year <span class="req">*</span></label>
+          <input type="number" class="form-input" value="${OE.year}" oninput="OE.year=this.value" style="font-family:var(--mono);"></div>
+      </div>
+      <div class="form-section-title">Budgeted Occupancy</div>
+      <p style="font-size:13px;color:var(--text2);margin-bottom:12px;">Enter the budgeted occupancy percentage for each month (e.g. <strong>95</strong> or <strong>95.2</strong>).</p>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;">${grid}</div>
+    </div>`;
+  footer.innerHTML=`<button class="btn btn-secondary" onclick="closeModal('occ-entry-modal')">Cancel</button>
+    <button class="btn btn-copper" onclick="submitOccEntry()">Submit Occupancy →</button>`;
+}
+async function submitOccEntry(){
+  if(!OE.pms){toast('Select a budget system','error');return;}
+  if(!OE.code.trim()){toast('Enter a property code','error');return;}
+  if(!OE.year||Number(OE.year)<2000){toast('Enter a valid budget year','error');return;}
+  if(!OCC_MONTHS.some(([k])=>OE.occupancy[k]!=='')){toast('Enter at least one month of occupancy','error');return;}
+  showLoading('Checking for existing occupancy...');
+  let existing=null;
+  try{existing=await getOccupancySubmission(OE.code.trim(),OE.year);}catch(e){console.warn('dedup check failed',e);}
+  hideLoading();
+  if(existing&&!OE.confirmReplace){renderOccConfirm(existing);return;}
+  await saveOccEntry();
+}
+function renderOccConfirm(existing){
+  const body=document.getElementById('occ-entry-body');
+  const footer=document.getElementById('occ-entry-footer');
+  const prev=OCC_MONTHS.map(([k,l])=>`<span style="font-family:var(--mono);font-size:12px;">${l.slice(0,3)}: ${existing.occupancy&&existing.occupancy[k]!==''&&existing.occupancy[k]!=null?existing.occupancy[k]+'%':'—'}</span>`).join('<span style="color:var(--border);margin:0 4px;">|</span>');
+  body.innerHTML=`<div class="info-box warning" style="margin-bottom:14px;">⚠ This property has already submitted occupancy data for ${esc(String(OE.year))}.</div>
+    <div class="form-section">
+      <div class="form-section-title">Previously Submitted</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;line-height:1.9;margin-bottom:8px;">${prev}</div>
+      <p style="font-size:12px;color:var(--text3);">Submitted by ${esc(existing.submitterName||'—')}${existing.submitterEmail?' ('+esc(existing.submitterEmail)+')':''}</p>
+    </div>
+    <p style="font-size:13px;color:var(--text2);">Would you like to enter it again? <strong>The previous data will be replaced.</strong></p>`;
+  footer.innerHTML=`<button class="btn btn-secondary" onclick="renderOccEntry()">← No, keep existing</button>
+    <button class="btn btn-danger" onclick="OE.confirmReplace=true;saveOccEntry()">Yes, replace it →</button>`;
+}
+async function saveOccEntry(){
+  showLoading('Saving occupancy...');
+  const ok=await persistOccupancy(OE.pms,OE.code.trim(),OE.year,OE.occupancy);
+  // Stamp the matching property in Monday if we can find it by code.
+  try{
+    const prop=allProperties.find(x=>String(x.code).trim()===String(OE.code).trim());
+    if(prop){
+      const today=new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+      await pushDateToMonday(prop.id,COL.occVacEntryDate,today);
+      prop.occVacEntryDate=today;
+    }
+  }catch(e){console.warn('property stamp failed',e);}
+  logActivity('Occupancy Submitted',{property:OE.code.trim()});
+  hideLoading();
+  if(ok)toast('Occupancy submitted','success');
+  closeModal('occ-entry-modal');
 }
 
 async function submitReopen(){
@@ -1427,6 +1543,10 @@ async function submitResubmit(){
 
   const newTicket={id:'t'+Date.now(),propId:p.id,propName:p.name,code:p.code,submittedBy:currentUser.name,position:currentUser.position,email:currentUser.email,dateSubmitted:today,isReopen:true,adminChecks:{imported:false,finalized:false,occDone:false},status:'Ticket Submitted',uploadedFile:TS.uploadedFile||null};
   ticketQueue.push(newTicket);
+  // Persist updated occupancy (Firebase dedup memory + SharePoint) if the user entered changes.
+  if(TS.updateOccupancy&&OCC_MONTHS.some(([k])=>TS.occupancy[k]!=='')){
+    await persistOccupancy(p.pmsSystem||'',p.code,currentYear,TS.occupancy);
+  }
   logActivity('Budget Resubmitted',{property:p.name});
   closeModal('submit-modal');clearSelection();
   document.getElementById('ticket-body').innerHTML=`<div class="info-box success" style="margin-bottom:14px;">✓ Status updated. Click Open in Zendesk to complete your re-finalization ticket.</div>
