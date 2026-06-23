@@ -86,26 +86,11 @@ tr.selected td{background:rgba(184,115,51,.05);}
 .page-btn:hover{border-color:var(--copper);color:var(--copper);}
 .page-btn.active{background:var(--copper);border-color:var(--copper);color:#fff;}
 .page-btn:disabled{opacity:.3;cursor:not-allowed;}
-#user-gate{display:none;align-items:center;justify-content:center;min-height:100vh;background:var(--bg);}
-.gate-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:40px;width:440px;box-shadow:0 4px 24px rgba(0,0,0,.08);}
-.gate-logo{height:48px;width:auto;display:block;margin:0 auto 20px;}
-.gate-card h1{font-size:20px;font-weight:600;text-align:center;margin-bottom:6px;color:var(--juniper);}
-.gate-sub{color:var(--text2);font-size:13px;text-align:center;margin-bottom:28px;line-height:1.6;}
 .form-group{margin-bottom:14px;}
 .form-label{font-size:11px;font-weight:600;color:var(--text2);margin-bottom:6px;display:block;text-transform:uppercase;letter-spacing:.5px;}
 .form-label .req{color:var(--red);margin-left:2px;}
 .form-input,.form-select,.form-textarea{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:9px 12px;color:var(--text);font-family:var(--font);font-size:13px;outline:none;transition:border-color .2s;}
 .form-input:focus,.form-select:focus,.form-textarea:focus{border-color:var(--copper);}
-.gate-btn{width:100%;padding:12px;background:var(--juniper);color:#fff;border:none;border-radius:10px;font-family:var(--font);font-size:14px;font-weight:600;cursor:pointer;margin-top:8px;}
-.gate-btn:hover{opacity:.9;}
-.gate-note{font-size:11px;color:var(--text3);text-align:center;margin-top:16px;line-height:1.6;}
-#passcode-screen{display:none;align-items:center;justify-content:center;min-height:100vh;background:var(--bg);}
-.passcode-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:40px;width:400px;box-shadow:0 4px 24px rgba(0,0,0,.08);text-align:center;}
-.passcode-card h2{font-size:18px;font-weight:600;color:var(--juniper);margin-bottom:8px;}
-.passcode-sub{font-size:13px;color:var(--text2);margin-bottom:24px;line-height:1.6;}
-.passcode-input{width:100%;background:var(--surface2);border:2px solid var(--border);border-radius:10px;padding:14px;color:var(--text);font-family:var(--mono);font-size:24px;text-align:center;letter-spacing:8px;outline:none;}
-.passcode-input:focus{border-color:var(--copper);}
-.passcode-error{color:var(--red);font-size:13px;margin-top:10px;display:none;}
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:1000;align-items:center;justify-content:center;padding:20px;}
 .modal-overlay.open{display:flex;}
 .modal{background:var(--surface);border:1px solid var(--border);border-radius:16px;width:100%;max-width:600px;max-height:92vh;overflow-y:auto;}
@@ -189,48 +174,6 @@ tr.selected td{background:rgba(184,115,51,.05);}
 </style>
 </head>
 <body>
-
-<!-- GATE -->
-<div id="user-gate">
-  <div class="gate-card">
-    <div style="text-align:center;margin-bottom:20px;"><div style="width:56px;height:56px;background:var(--juniper);border-radius:14px;display:inline-flex;align-items:center;justify-content:center;font-size:24px;">✅</div></div>
-    <h1>Budget Approval Status</h1>
-    <p class="gate-sub">Enter your information to access the portal.</p>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-      <div class="form-group"><label class="form-label">First Name <span class="req">*</span></label><input type="text" class="form-input" id="gate-first" placeholder="Jane"></div>
-      <div class="form-group"><label class="form-label">Last Name <span class="req">*</span></label><input type="text" class="form-input" id="gate-last" placeholder="Smith"></div>
-    </div>
-    <div class="form-group"><label class="form-label">Email Address <span class="req">*</span></label><input type="email" class="form-input" id="gate-email" placeholder="jane.smith@rpmliving.com"></div>
-    <div class="form-group"><label class="form-label">Role <span class="req">*</span></label>
-      <select class="form-select" id="gate-position">
-        <option value="">Select your role...</option>
-        <option>Community Manager</option>
-        <option>Senior Community Manager</option>
-        <option>Regional Manager</option>
-        <option>Senior Regional Manager</option>
-        <option>Regional Vice President</option>
-        <option>SVP Operations</option>
-        <option>Budget Admin</option>
-        <option>Other</option>
-      </select>
-    </div>
-    <button class="gate-btn" onclick="submitGate()">Continue →</button>
-    <p class="gate-note">Your information will auto-populate into submitted tickets.</p>
-  </div>
-</div>
-
-<!-- PASSCODE -->
-<div id="passcode-screen">
-  <div class="passcode-card">
-    <div style="font-size:36px;margin-bottom:12px;">🔐</div>
-    <h2>Budget Admin Access</h2>
-    <p class="passcode-sub">Enter today's passcode to continue with admin access.</p>
-    <input type="password" class="passcode-input" id="passcode-input" maxlength="6" placeholder="••••••" oninput="checkPasscode()">
-    <p class="passcode-error" id="passcode-error">Incorrect passcode. Try again.</p>
-    <button class="gate-btn" style="margin-top:16px;" onclick="verifyPasscode()">Verify</button>
-    <button style="margin-top:10px;background:none;border:none;color:var(--text3);font-size:12px;cursor:pointer;font-family:var(--font);width:100%;" onclick="skipAdmin()">Continue without admin access</button>
-  </div>
-</div>
 
 <!-- APP -->
 <div id="app" style="display:none;">
@@ -805,29 +748,6 @@ async function logActivity(action,details={}){
 }
 
 // ── GATE ──
-function submitGate(){
-  const firstName=document.getElementById('gate-first').value.trim();
-  const lastName=document.getElementById('gate-last').value.trim();
-  const email=document.getElementById('gate-email').value.trim();
-  const position=document.getElementById('gate-position').value;
-  if(!firstName||!lastName||!email||!position){toast('Please fill in all fields','error');return;}
-  if(!email.includes('@')){toast('Please enter a valid email','error');return;}
-  currentUser={firstName,lastName,name:firstName+' '+lastName,email,position};
-  if(position==='Budget Admin'){
-    document.getElementById('user-gate').style.display='none';
-    document.getElementById('passcode-screen').style.display='flex';
-  } else {isAdmin=false;launchApp();}
-}
-function verifyPasscode(){
-  const input=document.getElementById('passcode-input').value.trim();
-  const now=new Date();
-  const correct=String(now.getMonth()+1).padStart(2,'0')+String(now.getDate()).padStart(2,'0')+String(now.getFullYear()).slice(-2);
-  if(input===correct){isAdmin=true;document.getElementById('passcode-screen').style.display='none';launchApp();}
-  else{document.getElementById('passcode-error').style.display='block';document.getElementById('passcode-input').value='';}
-}
-function checkPasscode(){document.getElementById('passcode-error').style.display='none';}
-function skipAdmin(){isAdmin=false;document.getElementById('passcode-screen').style.display='none';launchApp();}
-
 function launchApp(){
   document.getElementById('app').style.display='block';
   document.getElementById('header-user').textContent=currentUser.name+' · '+currentUser.position+(isAdmin?' (Admin)':'');
@@ -1215,7 +1135,7 @@ async function openTicket(){
   const propList=props.map(p=>`• ${p.name} (${p.code}) | Owner: ${p.owner} | PMA: ${p.pmaDate} | RVP: ${p.rvp}`).join('\n');
   const subject=`Budget Approval — ${props.map(p=>p.name).join(', ')} — ${currentYear}`;
   const desc=`Submitted by: ${currentUser.name} (${currentUser.position}) — ${currentUser.email}\n\nProperties:\n${propList}\n\nApproval Sign Off: ${S.uploadedFile}\nClient COA: ${S.useClientCOA?S.coaName:'N/A'}\nGL Verified: ${S.useClientCOA?(S.glVerified==='yes'?'Yes':'N/A'):'N/A'}`;
-  pendingZendeskUrl=buildZendeskUrl(subject,desc);
+  pendingZendeskUrl=buildZendeskUrl(subject,desc,props.map(p=>p.name).join(', '),props.map(p=>p.code).join(', '),props.length===1?props[0].state:null);
   const today=new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
 
   // Update Monday status, stamp original approval date, and upload file for each property
@@ -1242,7 +1162,7 @@ async function openTicket(){
 }
 
 function openZendeskTicket(){if(pendingZendeskUrl)window.open(pendingZendeskUrl,'_blank');closeModal('ticket-modal');toast('Ticket opened in Zendesk','success');}
-function buildZendeskUrl(subject,desc){return`https://rpmliving.zendesk.com/hc/en-us/requests/new?${new URLSearchParams({'request[subject]':subject,'request[description]':desc}).toString()}`;}
+function buildZendeskUrl(subject,desc,propName,propCode,propState,requestType){const params={ticket_form_id:'8006602402843','request[subject]':subject,'request[description]':desc};if(propState&&propName&&propCode)params['request[custom_fields][6655529054875]']=`${propState}::${propName} - ${propCode}`;if(requestType)params['request[custom_fields][8006773323035]']=requestType;return`https://roscoeproperties.zendesk.com/hc/en-us/requests/new?${new URLSearchParams(params).toString()}`;}
 
 // ── REOPEN FLOW ──
 function openReopenFlow(id){
@@ -1337,7 +1257,7 @@ async function submitReopen(){
   p.lastReopenDate=today;
   const subject=`Budget Reopen — ${p.name} (${p.code}) — ${currentYear}`;
   const desc=`Reopen by: ${currentUser.name} (${currentUser.position}) — ${currentUser.email}\n\nProperty: ${p.name} (${p.code})\nOriginal Approval: ${p.originalApprovalDate||'—'}\nReopen Date: ${today}\nReason: ${RS.reopenReason==='relocating'?'Relocating income/expenses':'Adding new expenses/income'}\n${RS.uploadedFile?`Written Approval: ${RS.uploadedFile}`:'No written approval required'}`;
-  pendingZendeskUrl=buildZendeskUrl(subject,desc);
+  pendingZendeskUrl=buildZendeskUrl(subject,desc,p.name,p.code,p.state,'reopen_budget');
 
   const newTicket={id:'t'+Date.now(),propId:p.id,propName:p.name,code:p.code,submittedBy:currentUser.name,position:currentUser.position,email:currentUser.email,dateSubmitted:today,isReopen:true,adminChecks:{imported:false,finalized:false,occDone:false},status:'Ticket Submitted',uploadedFile:RS.uploadedFile||null};
   ticketQueue.push(newTicket);
@@ -1500,7 +1420,7 @@ async function submitResubmit(){
   const approvalNote=TS.uploadedFile?`Written Approval: ${TS.uploadedFile}`:`Confirmed — no cashflow changes (expenses relocated only)`;
   const occNote=TS.updateOccupancy?`\n\nUpdated Occupancy:\n${['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'].map((k,i)=>`${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][i]}: ${TS.occupancy[k]?TS.occupancy[k]+'%':'—'}`).join(' | ')}`:'';
   const desc=`Re-submitted by: ${currentUser.name} (${currentUser.position}) — ${currentUser.email}\n\nProperty: ${p.name} (${p.code})\nOriginal Approval: ${p.originalApprovalDate||'—'}\nReopened: ${p.lastReopenDate||'—'}\n${approvalNote}${occNote}`;
-  pendingZendeskUrl=buildZendeskUrl(subject,desc);
+  pendingZendeskUrl=buildZendeskUrl(subject,desc,p.name,p.code,p.state,'finalize_budget');
 
   p.approvalStatus='Ticket Submitted';
   await pushStatusToMonday(p.id,COL.status,'Ticket Submitted');
@@ -1675,18 +1595,15 @@ document.querySelectorAll('.modal-overlay').forEach(o=>{o.addEventListener('clic
 // Auto-login from Hub session
 window.addEventListener('DOMContentLoaded',()=>{
   const saved=localStorage.getItem('rpm_hub_user');
-  if(!saved){
-    document.getElementById('user-gate').style.display='flex';
-    return;
-  }
+  if(!saved){window.location.href='index.html';return;}
   localStorage.removeItem('rpm_hub_user'); // clear immediately — one-time use
   try{
     const u=JSON.parse(saved);
-    if(!u.name){document.getElementById('user-gate').style.display='flex';return;}
+    if(!u.name){window.location.href='index.html';return;}
     currentUser={firstName:u.firstName||'',lastName:u.lastName||'',name:u.name,email:u.email||'',position:u.position||''};
     if(u.isAdmin){isAdmin=true;}
     launchApp();
-  }catch(e){document.getElementById('user-gate').style.display='flex';}
+  }catch(e){window.location.href='index.html';}
 });
 </script>
 </body>
