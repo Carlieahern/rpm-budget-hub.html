@@ -1140,7 +1140,7 @@ function renderSubmitStep(){
         <p style="margin-bottom:14px;"><button onclick="document.getElementById('occ-help-modal').classList.add('open')" style="background:none;border:none;color:var(--copper);font-size:12px;font-weight:600;cursor:pointer;padding:0;font-family:var(--font);">How do I find this? →</button></p>
         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">${grid}</div>
       </div>`;
-    footer.innerHTML=`<button class="btn btn-secondary" onclick="S.step=3;renderSubmitStep()">← Back</button><button class="btn btn-copper" onclick="S.step=5;renderSubmitStep()">Next: Open Ticket →</button>`;
+    footer.innerHTML=`<button class="btn btn-secondary" onclick="S.step=3;renderSubmitStep()">← Back</button><button class="btn btn-copper" onclick="occStepNext()">Next: Open Ticket →</button>`;
 
   } else if(S.step===5){
     const props=S.selectedIds.map(id=>allProperties.find(p=>p.id===id)).filter(Boolean);
@@ -1174,6 +1174,8 @@ function handleFile(input){
 function stepNext3(){if(S.useClientCOA===null){toast('Please select an option','error');return;}renderSubmitStep();}
 function saveCOAName(){const v=document.getElementById('coa-name-input')?.value?.trim();if(!v){toast('Please enter the COA name','error');return;}S.coaName=v;renderSubmitStep();}
 function stepGL(){if(!S.glVerified){toast('Please select an option','error');return;}renderSubmitStep();}
+function occStepNext(){if(OCC_MONTHS.some(([k])=>S.occupancy[k]===''||S.occupancy[k]==null)){toast('Enter all 12 months (use 0 if none)','error');return;}S.step=5;renderSubmitStep();}
+function occStepNextResubmit(){if(OCC_MONTHS.some(([k])=>TS.occupancy[k]===''||TS.occupancy[k]==null)){toast('Enter all 12 months (use 0 if none)','error');return;}TS.step=4;renderResubmitStep();}
 
 async function openTicket(){
   const props=S.selectedIds.map(id=>allProperties.find(p=>p.id===id)).filter(Boolean);
@@ -1196,9 +1198,11 @@ async function openTicket(){
 
   const newTicket={id:'t'+Date.now(),propId:props[0].id,propName:props.map(x=>x.name).join(', '),code:props.map(x=>x.code).join(', '),submittedBy:currentUser.name,position:currentUser.position,email:currentUser.email,dateSubmitted:today,isReopen:false,adminChecks:{imported:false,finalized:false,occDone:false},status:'Ticket Submitted',uploadedFile:S.uploadedFile};
   ticketQueue.push(newTicket);
-  // Persist occupancy (Firebase dedup memory + SharePoint) for each property if entered.
+  // Persist occupancy to Firebase and queue the pre-filled form for each property.
+  let occItems=[];
   if(OCC_MONTHS.some(([k])=>S.occupancy[k]!=='')){
     for(const p of props){await persistOccupancy(p.pmsSystem||'',p.code,currentYear,S.occupancy);}
+    occItems=props.map(p=>({pms:p.pmsSystem||'',code:p.code,year:currentYear,occ:S.occupancy}));
   }
   logActivity('Budget Ticket Submitted',{property:props.map(p=>p.name).join(', ')});
   closeModal('submit-modal');clearSelection();
@@ -1206,8 +1210,9 @@ async function openTicket(){
     ${props.map(p=>`<div class="verify-row"><span class="verify-label">Property</span><span class="verify-value">${esc(p.name)}</span></div>`).join('')}
     <div class="verify-row"><span class="verify-label">Submitted By</span><span class="verify-value">${esc(currentUser.name)}</span></div>
     <div class="verify-row"><span class="verify-label">Approval Sign Off</span><span class="verify-value">📎 ${esc(S.uploadedFile)}</span></div>`;
-  document.getElementById('ticket-modal').classList.add('open');
   filterTable();updateStats();renderQueue();
+  // Submit occupancy form(s) first, then show the Zendesk ticket modal.
+  startOccForms(occItems,()=>document.getElementById('ticket-modal').classList.add('open'));
 }
 
 function openZendeskTicket(){if(pendingZendeskUrl)window.open(pendingZendeskUrl,'_blank');closeModal('ticket-modal');toast('Ticket opened in Zendesk','success');}
@@ -1326,6 +1331,24 @@ function openOccForm(pms,code,year,occ){
 function closeOccForm(){
   if(confirm('Did you click Submit inside the form and see “Your response was submitted”?\n\nIf you did NOT, your occupancy was not sent. Click Cancel to go back and submit.')){
     closeModal('occ-form-modal');
+    setTimeout(flushOccFormQueue,250);
+  }
+}
+// Queue of pre-filled forms (one per property), with an optional callback when done.
+// Lets the approval/resubmit flows submit occupancy the same way the dashboard does.
+let occFormQueue=[];
+let occQueueDone=null;
+function startOccForms(items,onDone){
+  occFormQueue=items||[];
+  occQueueDone=onDone||null;
+  flushOccFormQueue();
+}
+function flushOccFormQueue(){
+  if(occFormQueue.length){
+    const it=occFormQueue.shift();
+    openOccForm(it.pms,it.code,it.year,it.occ);
+  }else if(occQueueDone){
+    const cb=occQueueDone;occQueueDone=null;cb();
   }
 }
 // Save to Firebase (dedup memory). Delivery to the list happens via the pre-filled
@@ -1549,7 +1572,7 @@ function renderResubmitStep(){
         <p style="margin-bottom:14px;"><button onclick="document.getElementById('occ-help-modal').classList.add('open')" style="background:none;border:none;color:var(--copper);font-size:12px;font-weight:600;cursor:pointer;padding:0;font-family:var(--font);">How do I find this? →</button></p>
         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">${grid}</div>
       </div>`;
-    footer.innerHTML=`<button class="btn btn-secondary" onclick="TS.step=2;renderResubmitStep()">← Back</button><button class="btn btn-copper" onclick="TS.step=4;renderResubmitStep()">Next: Review →</button>`;
+    footer.innerHTML=`<button class="btn btn-secondary" onclick="TS.step=2;renderResubmitStep()">← Back</button><button class="btn btn-copper" onclick="occStepNextResubmit()">Next: Review →</button>`;
 
   }else if(TS.step===4){
     // ── Summary ──
@@ -1598,9 +1621,11 @@ async function submitResubmit(){
 
   const newTicket={id:'t'+Date.now(),propId:p.id,propName:p.name,code:p.code,submittedBy:currentUser.name,position:currentUser.position,email:currentUser.email,dateSubmitted:today,isReopen:true,adminChecks:{imported:false,finalized:false,occDone:false},status:'Ticket Submitted',uploadedFile:TS.uploadedFile||null};
   ticketQueue.push(newTicket);
-  // Persist updated occupancy (Firebase dedup memory + SharePoint) if the user entered changes.
+  // Persist updated occupancy to Firebase and queue the pre-filled form if changed.
+  let occItems=[];
   if(TS.updateOccupancy&&OCC_MONTHS.some(([k])=>TS.occupancy[k]!=='')){
     await persistOccupancy(p.pmsSystem||'',p.code,currentYear,TS.occupancy);
+    occItems=[{pms:p.pmsSystem||'',code:p.code,year:currentYear,occ:TS.occupancy}];
   }
   logActivity('Budget Resubmitted',{property:p.name});
   closeModal('submit-modal');clearSelection();
@@ -1608,8 +1633,9 @@ async function submitResubmit(){
     <div class="verify-row"><span class="verify-label">Property</span><span class="verify-value">${esc(p.name)}</span></div>
     <div class="verify-row"><span class="verify-label">Submitted By</span><span class="verify-value">${esc(currentUser.name)}</span></div>
     ${TS.uploadedFile?`<div class="verify-row"><span class="verify-label">Written Approval</span><span class="verify-value">📎 ${esc(TS.uploadedFile)}</span></div>`:``}`;
-  document.getElementById('ticket-modal').classList.add('open');
   filterTable();updateStats();renderQueue();
+  // Submit the occupancy form first (if changed), then show the Zendesk ticket modal.
+  startOccForms(occItems,()=>document.getElementById('ticket-modal').classList.add('open'));
 }
 
 // ── TICKET QUEUE ──
