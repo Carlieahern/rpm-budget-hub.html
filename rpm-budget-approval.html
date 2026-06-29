@@ -999,8 +999,24 @@ function openDetailModal(id){
 
   document.getElementById('detail-modal-body').innerHTML=`
     <div class="form-section"><div class="form-section-title">Property Info</div>${infoHtml}</div>
+    <div class="form-section" id="detail-occ-section"><div class="form-section-title">Last Submitted Occupancy</div>
+      <div id="detail-occ-body" style="font-size:12px;color:var(--text3);">Loading…</div></div>
     ${historyHtml}${ticketsHtml}${adminActionsHtml}`;
   document.getElementById('detail-modal').classList.add('open');
+  loadDetailOccupancy(p.code,currentYear);
+}
+// Show the most recent occupancy submitted for this property/year (from Firebase).
+async function loadDetailOccupancy(code,year){
+  const el=document.getElementById('detail-occ-body');
+  if(!el)return;
+  try{
+    const sub=await getOccupancySubmission(code,year);
+    if(!sub){el.innerHTML=`<span style="font-size:12px;color:var(--text3);">No occupancy submitted for ${esc(String(year))} yet.</span>`;return;}
+    const occ=sub.occupancy||{};
+    const row=OCC_MONTHS.map(([k,l])=>`<span style="font-family:var(--mono);font-size:12px;">${l.slice(0,3)}: ${occ[k]!==''&&occ[k]!=null?occ[k]+'%':'—'}</span>`).join('<span style="color:var(--border);margin:0 4px;">|</span>');
+    el.innerHTML=`<div style="display:flex;flex-wrap:wrap;gap:6px;line-height:1.9;margin-bottom:6px;">${row}</div>
+      <div style="font-size:11px;color:var(--text3);">${sub.pms?esc(sub.pms)+' · ':''}Budget Year ${esc(String(sub.budgetYear||year))}${sub.submitterName?' · entered by '+esc(sub.submitterName):''}</div>`;
+  }catch(e){console.warn('load detail occupancy failed',e);el.innerHTML='<span style="font-size:12px;color:var(--text3);">Could not load occupancy.</span>';}
 }
 
 async function adminEditProp(propId,key,val){
@@ -1350,13 +1366,13 @@ function renderOccEntry(){
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;">${grid}</div>
     </div>`;
   footer.innerHTML=`<button class="btn btn-secondary" onclick="closeModal('occ-entry-modal')">Cancel</button>
-    <button class="btn btn-copper" onclick="submitOccEntry()">Submit Occupancy →</button>`;
+    <button class="btn btn-copper" onclick="submitOccEntry()">Continue to Verification →</button>`;
 }
 async function submitOccEntry(){
   if(!OE.pms){toast('Select a budget system','error');return;}
   if(!OE.code.trim()){toast('Enter a property code','error');return;}
   if(!OE.year||Number(OE.year)<2000){toast('Enter a valid budget year','error');return;}
-  if(!OCC_MONTHS.some(([k])=>OE.occupancy[k]!=='')){toast('Enter at least one month of occupancy','error');return;}
+  if(OCC_MONTHS.some(([k])=>OE.occupancy[k]===''||OE.occupancy[k]==null)){toast('Enter all 12 months (use 0 if none)','error');return;}
   showLoading('Checking for existing occupancy...');
   let existing=null;
   try{existing=await getOccupancySubmission(OE.code.trim(),OE.year);}catch(e){console.warn('dedup check failed',e);}
