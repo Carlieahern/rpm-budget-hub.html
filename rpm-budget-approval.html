@@ -409,6 +409,20 @@ tr.selected td{background:rgba(184,115,51,.05);}
   </div>
 </div>
 
+<!-- Pre-filled occupancy form (final submit to the list) -->
+<div class="modal-overlay" id="occ-form-modal">
+  <div class="modal modal-lg">
+    <div class="modal-header"><div><div class="modal-title">📊 Review &amp; Submit</div><div class="modal-subtitle">Values are pre-filled — just click Submit at the bottom of the form</div></div><button class="modal-close" onclick="closeModal('occ-form-modal')">×</button></div>
+    <div class="modal-body" style="padding:0;">
+      <iframe id="occ-form-frame" title="Budgeted occupancy form" style="width:100%;height:60vh;border:0;display:block;"></iframe>
+    </div>
+    <div class="modal-footer">
+      <a id="occ-form-link" href="#" target="_blank" rel="noopener" class="btn btn-secondary">Open in new tab ↗</a>
+      <button class="btn btn-copper" onclick="closeModal('occ-form-modal')">Done</button>
+    </div>
+  </div>
+</div>
+
 <div class="loading-overlay" id="loading"><div class="spinner"></div><div style="color:var(--juniper);font-size:14px;font-weight:600;" id="loading-text">Syncing...</div></div>
 <div class="toast-container" id="toast-container"></div>
 <div class="loading-overlay" id="loading"><div class="spinner"></div><div class="loading-text" id="loading-text">Loading...</div></div>
@@ -1263,24 +1277,34 @@ function handleReopenFile(input){
 // ── OCCUPANCY PERSISTENCE (shared) ──
 const OCC_MONTHS=[['jan','January'],['feb','February'],['mar','March'],['apr','April'],['may','May'],['jun','June'],['jul','July'],['aug','August'],['sep','September'],['oct','October'],['nov','November'],['dec','December']];
 
-// Build the SharePoint/Power Automate payload. Month values are sent as whole-number
-// percentages (e.g. 95) — the Power Automate flow divides by 100 before storing.
-function buildOccPayload(pms,code,year,occ,name,email){
-  const out={propertyManagementSystem:pms||'',propertyCode:String(code),budgetYear:Number(year),submitterName:name||'',submitterEmail:email||''};
-  OCC_MONTHS.forEach(([k,full])=>{out[full.toLowerCase()]=Number(occ[k])||0;});
-  return out;
+// Pre-fill link to the Budget Occupancy Microsoft Form (org-only). Field IDs are from
+// the form's "Get pre-filled link". Choice answers (PMS) must be JSON-quoted; text and
+// number answers are plain. Months are pre-filled as DECIMALS (95 entered → 0.95) so
+// the form/list store decimals directly and the Power Automate flow needs no division.
+const OCC_FORM_BASE='https://forms.office.com/Pages/ResponsePage.aspx?id=Huu3B_HhWUehsQJo5AfiCmJ2Ghvp8o5EliZ6m0mGCRpUMU4xSE1VNUtRWUJVRTJHVzNINERYRFQ4Ti4u';
+const OCC_FORM_FIELDS={pms:'r4cbfdf5c16c441e09b81f41bc6bb8553',code:'rdcb6b196033a48cbbd2bcdf3be4439b8',year:'rad4626cee5254abdbf829e10163da068',jan:'rb0193d9ee2ce433b804569a265a4ca4f',feb:'ra44c4793a75e4d6e8909171bb39ed990',mar:'r1e0ee559ea0849fb8fd9e8b4d96507f4',apr:'r7e965b2cfedc4d36876e03df23eff702',may:'rbd1b87382bb345469e4870332dc7e09f',jun:'r5fa1cbbcbf8246fab958fa135380cf38',jul:'r1a16053eca6c4ddb8a527e9b5c05ad4b',aug:'rc25fe0d5bba5444394752d29f0f7ad89',sep:'r21a023f4983a46a0aee4375fb5d529f6',oct:'r48e84ccb53a84c95a9448ea8391abe82',nov:'rb44b33cf22b4439e8da8eccb67e153ab',dec:'rb7a3cab444f34c32aa0e18dc8b126641'};
+function buildOccFormUrl(pms,code,year,occ){
+  const parts=[];
+  if(pms)parts.push(OCC_FORM_FIELDS.pms+'='+encodeURIComponent('"'+pms+'"'));
+  if(code)parts.push(OCC_FORM_FIELDS.code+'='+encodeURIComponent(String(code).trim()));
+  if(year)parts.push(OCC_FORM_FIELDS.year+'='+encodeURIComponent(String(year).trim()));
+  OCC_MONTHS.forEach(([k])=>{const v=occ[k];if(v!==''&&v!=null&&!isNaN(v)){const dec=parseFloat((Number(v)/100).toFixed(6));parts.push(OCC_FORM_FIELDS[k]+'='+encodeURIComponent(dec));}});
+  return OCC_FORM_BASE+'&'+parts.join('&');
 }
-async function sendOccupancyToSharePoint(payload){
-  const r=await fetch('/api/occupancy',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-  if(!r.ok)throw new Error('SharePoint send failed ('+r.status+')');
+// Open the pre-filled form for the user to review + submit (delivery to the list).
+function openOccForm(pms,code,year,occ){
+  const url=buildOccFormUrl(pms,code,year,occ);
+  document.getElementById('occ-form-frame').src=url;
+  document.getElementById('occ-form-link').href=url;
+  document.getElementById('occ-form-modal').classList.add('open');
 }
-// Save to Firebase (dedup memory) + send to SharePoint (official record). Non-fatal on error.
+// Save to Firebase (dedup memory). Delivery to the list happens via the pre-filled
+// Microsoft Form (openOccForm). Non-fatal on error.
 async function persistOccupancy(pms,code,year,occ){
   try{
     await saveOccupancySubmission({pms,propertyCode:code,budgetYear:year,occupancy:occ,submitterName:currentUser.name,submitterEmail:currentUser.email});
-    await sendOccupancyToSharePoint(buildOccPayload(pms,code,year,occ,currentUser.name,currentUser.email));
     return true;
-  }catch(e){console.warn('persistOccupancy failed',e);toast('Occupancy did not fully save — check connection','warning');return false;}
+  }catch(e){console.warn('persistOccupancy failed',e);return false;}
 }
 
 // ── STANDALONE OCCUPANCY ENTRY ──
@@ -1300,7 +1324,7 @@ function renderOccEntry(){
         <div><label class="form-label">Budget System <span class="req">*</span></label>
           <select class="form-select" onchange="OE.pms=this.value">
             <option value="">Select...</option>
-            ${['Yardi','RealPage','Entrata'].map(s=>`<option ${OE.pms===s?'selected':''}>${s}</option>`).join('')}
+            ${['Realpage','Yardi','Entrata'].map(s=>`<option ${OE.pms===s?'selected':''}>${s}</option>`).join('')}
           </select></div>
         <div><label class="form-label">Property Code <span class="req">*</span></label>
           <input type="text" class="form-input" value="${esc(OE.code)}" oninput="OE.code=this.value" placeholder="e.g. 47823"></div>
@@ -1342,7 +1366,7 @@ function renderOccConfirm(existing){
 }
 async function saveOccEntry(){
   showLoading('Saving occupancy...');
-  const ok=await persistOccupancy(OE.pms,OE.code.trim(),OE.year,OE.occupancy);
+  await persistOccupancy(OE.pms,OE.code.trim(),OE.year,OE.occupancy);
   // Stamp the matching property in Monday if we can find it by code.
   try{
     const prop=allProperties.find(x=>String(x.code).trim()===String(OE.code).trim());
@@ -1354,8 +1378,9 @@ async function saveOccEntry(){
   }catch(e){console.warn('property stamp failed',e);}
   logActivity('Occupancy Submitted',{property:OE.code.trim()});
   hideLoading();
-  if(ok)toast('Occupancy submitted','success');
   closeModal('occ-entry-modal');
+  // Open the pre-filled form for the user to review + submit to the list.
+  openOccForm(OE.pms,OE.code.trim(),OE.year,OE.occupancy);
 }
 
 async function submitReopen(){
