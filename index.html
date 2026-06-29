@@ -686,7 +686,6 @@ function checkDuplicateCode(){
 // CONFIG
 // ============================================================
 const BOARD_ID = '9029568429';
-const ACTIVITY_BOARD = '18407376110';
 const HARDCODED_TOKEN = 'eyJhbGciOiJIUzI1NiJ9.eyJ0aWQiOjYzODMwNTU0NywiYWFpIjoxMSwidWlkIjozMDU1NzM0OCwiaWFkIjoiMjAyNi0wMy0yNlQxNzo0NDowMS4wMDBaIiwicGVyIjoibWU6d3JpdGUiLCJhY3RpZCI6NzI1NTc5MCwicmduIjoidXNlMSJ9.KInntwsV13u5Wi0WpeBrksAUbQxZ57Ol15wX9dtlkIQ';
 const TOKEN_KEY = 'rpm_monday_token';
 const YEARS = [2027, 2028];
@@ -711,8 +710,6 @@ let pendingYear = null;
 let siteGroupIds = {}; // { 2026: groupId, 2027: groupId, 2028: groupId }
 let currentUser = {firstName:'', lastName:'', name:'', email:'', position:'', isAdmin:false};
 let isAdmin = false;
-let activityGroupId = null;
-let activitySessionItemId = null;
 
 // ============================================================
 // INIT
@@ -837,8 +834,9 @@ function setAssumptionsTile() {
 }
 
 function openAssumptionsApp() {
-  localStorage.setItem('rpm_hub_user', JSON.stringify({...currentUser, isAdmin}));
-  window.location.href = ASSUMPTIONS_URL;
+  const payload = JSON.stringify({...currentUser, isAdmin});
+  localStorage.setItem('rpm_hub_user', payload);
+  window.location.href = ASSUMPTIONS_URL + '?hubUser=' + encodeURIComponent(payload);
 }
 
 function openActivityTracker() {
