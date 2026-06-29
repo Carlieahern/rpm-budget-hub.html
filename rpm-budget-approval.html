@@ -415,7 +415,7 @@ tr.selected td{background:rgba(184,115,51,.05);}
     <div class="modal-header"><div><div class="modal-title">📊 Review &amp; Submit</div><div class="modal-subtitle">Scroll down and click Submit inside the form</div></div><button class="modal-close" onclick="closeModal('occ-form-modal')">×</button></div>
     <div class="modal-body" style="padding:0;">
       <div id="occ-form-banner" class="info-box danger" style="margin:0;border-radius:0;border-left:0;border-right:0;border-top:0;font-size:12px;padding:10px 16px;">⚠ Your occupancy sends <strong>only</strong> when you click <strong>Submit inside the form below</strong>. Closing this window does not submit it.</div>
-      <iframe id="occ-form-frame" title="Budgeted occupancy form" onload="occFormLoad()" style="width:100%;height:56vh;border:0;display:block;"></iframe>
+      <iframe id="occ-form-frame" title="Budgeted occupancy form" style="width:100%;height:56vh;border:0;display:block;"></iframe>
     </div>
     <div class="modal-footer">
       <a id="occ-form-link" href="#" target="_blank" rel="noopener" class="btn btn-secondary">Open in new tab ↗</a>
@@ -1293,29 +1293,27 @@ function buildOccFormUrl(pms,code,year,occ){
   return OCC_FORM_BASE+'&'+parts.join('&');
 }
 // Open the pre-filled form for the user to review + submit (delivery to the list).
-let occFormLoadCount=0;
+function setOccBanner(cls,html){
+  const b=document.getElementById('occ-form-banner');
+  b.className='info-box '+cls;
+  b.style.cssText='margin:0;border-radius:0;border-left:0;border-right:0;border-top:0;font-size:12px;padding:10px 16px;';
+  b.innerHTML=html;
+}
 function openOccForm(pms,code,year,occ){
   const url=buildOccFormUrl(pms,code,year,occ);
-  occFormLoadCount=0;
-  const banner=document.getElementById('occ-form-banner');
-  banner.className='info-box danger';
-  banner.style.cssText='margin:0;border-radius:0;border-left:0;border-right:0;border-top:0;font-size:12px;padding:10px 16px;';
-  banner.innerHTML='⚠ Your occupancy sends <strong>only</strong> when you click <strong>Submit inside the form below</strong>. Closing this window does not submit it.';
-  document.getElementById('occ-form-frame').src=url;
+  setOccBanner('danger','⚠ Your occupancy sends <strong>only</strong> when you click <strong>Submit inside the form below</strong>. Closing this window does not submit it.');
+  const frame=document.getElementById('occ-form-frame');
+  // Heuristic submit detection: first load = form; a later load = navigation to the
+  // "thanks" page after Submit. Attached in JS so it can't fire before it's defined.
+  let loads=0;
+  frame.onload=function(){
+    loads++;
+    console.log('occ form iframe load #'+loads);
+    if(loads>=2)setOccBanner('success','✓ Submission detected — your occupancy was sent. You can close this window.');
+  };
+  frame.src=url;
   document.getElementById('occ-form-link').href=url;
   document.getElementById('occ-form-modal').classList.add('open');
-}
-// Heuristic submit detection: the form's first load shows the form; a later load means
-// it navigated to the "thanks" page after Submit. (Test whether Forms fires this.)
-function occFormLoad(){
-  occFormLoadCount++;
-  console.log('occ form iframe load #'+occFormLoadCount);
-  if(occFormLoadCount>=2){
-    const banner=document.getElementById('occ-form-banner');
-    banner.className='info-box success';
-    banner.style.cssText='margin:0;border-radius:0;border-left:0;border-right:0;border-top:0;font-size:12px;padding:10px 16px;';
-    banner.innerHTML='✓ Submission detected — your occupancy was sent. You can close this window.';
-  }
 }
 // Save to Firebase (dedup memory). Delivery to the list happens via the pre-filled
 // Microsoft Form (openOccForm). Non-fatal on error.
