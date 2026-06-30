@@ -286,7 +286,7 @@
   <div style="font-size:15px;font-weight:700;color:#ffffff;margin-bottom:4px;">Budget Approval Status Board</div>
   <div style="font-size:12px;color:rgba(255,255,255,0.5);line-height:1.5;">Monitor client approval status and signed letter receipts.</div>
   <div style="margin-top:12px;">
-    <span id="approval-locked-badge" style="display:inline-flex;align-items:center;gap:6px;background:#e4e6ec;color:#8b92a8;padding:5px 12px;border-radius:20px;font-size:11px;font-weight:700;">🔒 Admin Only</span>
+    <span id="approval-locked-badge" style="display:inline-flex;align-items:center;gap:6px;background:#e4e6ec;color:#8b92a8;padding:5px 12px;border-radius:20px;font-size:11px;font-weight:700;">Coming Soon</span>
     <span id="approval-admin-link" onclick="openApprovalApp()" style="display:none;align-items:center;gap:6px;background:#B87333;color:white;padding:5px 12px;border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;">Open →</span>
   </div>
 </div>
@@ -821,18 +821,19 @@ function setApprovalTile(adminAccess) {
   const tile = document.getElementById('approval-tile');
   const link = document.getElementById('approval-admin-link');
   const badge = document.getElementById('approval-locked-badge');
+  // Badge always reads "Coming Soon"; admins can still open it (whole tile clickable).
+  link.style.display = 'none';
+  badge.style.display = 'inline-flex';
   if (adminAccess) {
     tile.style.opacity = '1';
-    tile.style.cursor = 'default';
+    tile.style.cursor = 'pointer';
     tile.style.borderColor = '#B87333';
-    link.style.display = 'inline-flex';
-    badge.style.display = 'none';
+    tile.onclick = openApprovalApp;
   } else {
     tile.style.opacity = '0.6';
     tile.style.cursor = 'not-allowed';
     tile.style.borderColor = '#dde0e8';
-    link.style.display = 'none';
-    badge.style.display = 'inline-flex';
+    tile.onclick = null;
   }
 }
 
