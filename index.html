@@ -267,14 +267,14 @@
     <p style="font-size:14px;color:rgba(255,255,255,0.45);margin-bottom:40px;">Select a tool to get started</p>
     <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;width:100%;max-width:1160px;">
 
-      <button onclick="launchTracker()" style="background:#1e2d4a;border:2px solid #B87333;border-radius:16px;padding:26px 22px;text-align:left;cursor:pointer;transition:all 0.2s;box-shadow:0 4px 20px rgba(0,0,0,0.3);" onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 8px 32px rgba(184,115,51,0.3)'" onmouseout="this.style.transform='';this.style.boxShadow='0 4px 20px rgba(0,0,0,0.3)'">
+      <button onclick="navTile('Budget Due Date Tracker', launchTracker)" style="background:#1e2d4a;border:2px solid #B87333;border-radius:16px;padding:26px 22px;text-align:left;cursor:pointer;transition:all 0.2s;box-shadow:0 4px 20px rgba(0,0,0,0.3);" onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 8px 32px rgba(184,115,51,0.3)'" onmouseout="this.style.transform='';this.style.boxShadow='0 4px 20px rgba(0,0,0,0.3)'">
         <div style="font-size:24px;margin-bottom:10px;">📅</div>
         <div style="font-size:15px;font-weight:700;color:#ffffff;margin-bottom:4px;">Budget Due Date Tracker</div>
         <div style="font-size:12px;color:rgba(255,255,255,0.5);line-height:1.5;">Track budget submission deadlines and workflow stages across all properties.</div>
         <div style="margin-top:12px;display:inline-flex;align-items:center;gap:6px;background:#B87333;color:white;padding:5px 12px;border-radius:20px;font-size:11px;font-weight:700;">Open →</div>
       </button>
 
-      <button onclick="openAssumptionsApp()" id="assumptions-tile" style="background:#1e2d4a;border:2px solid #B87333;border-radius:16px;padding:26px 22px;text-align:left;cursor:pointer;transition:all .2s;font-family:inherit;box-shadow:0 4px 20px rgba(0,0,0,0.3);" onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 8px 32px rgba(184,115,51,0.3)'" onmouseout="this.style.transform='';this.style.boxShadow='0 4px 20px rgba(0,0,0,0.3)'">
+      <button onclick="navTile('Budget Assumptions', openAssumptionsApp)" id="assumptions-tile" style="background:#1e2d4a;border:2px solid #B87333;border-radius:16px;padding:26px 22px;text-align:left;cursor:pointer;transition:all .2s;font-family:inherit;box-shadow:0 4px 20px rgba(0,0,0,0.3);" onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 8px 32px rgba(184,115,51,0.3)'" onmouseout="this.style.transform='';this.style.boxShadow='0 4px 20px rgba(0,0,0,0.3)'">
         <div style="font-size:24px;margin-bottom:10px;">📊</div>
         <div style="font-size:15px;font-weight:700;color:#ffffff;margin-bottom:4px;">Budget Assumptions</div>
         <div style="font-size:12px;color:rgba(255,255,255,0.5);line-height:1.5;">Manage and verify annual program cost assumptions by department.</div>
@@ -298,21 +298,21 @@
         <div style="margin-top:12px;display:inline-flex;align-items:center;gap:6px;background:#e4e6ec;color:#8b92a8;padding:5px 12px;border-radius:20px;font-size:11px;font-weight:700;">Coming Soon</div>
       </div>
 
-      <button onclick="window.open('https://knowledge.rpmliving.com/kb/knowledgenetwork/browse/202300000003180/Budgeting','_blank')" style="background:#1e2d4a;border:2px solid #B87333;border-radius:16px;padding:26px 22px;text-align:left;cursor:pointer;transition:all 0.2s;box-shadow:0 4px 20px rgba(0,0,0,0.3);font-family:inherit;" onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 8px 32px rgba(184,115,51,0.3)'" onmouseout="this.style.transform='';this.style.boxShadow='0 4px 20px rgba(0,0,0,0.3)'">
+      <button onclick="logTileClick('Knowledge Network');window.open('https://knowledge.rpmliving.com/kb/knowledgenetwork/browse/202300000003180/Budgeting','_blank')" style="background:#1e2d4a;border:2px solid #B87333;border-radius:16px;padding:26px 22px;text-align:left;cursor:pointer;transition:all 0.2s;box-shadow:0 4px 20px rgba(0,0,0,0.3);font-family:inherit;" onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 8px 32px rgba(184,115,51,0.3)'" onmouseout="this.style.transform='';this.style.boxShadow='0 4px 20px rgba(0,0,0,0.3)'">
         <div style="font-size:24px;margin-bottom:10px;">📚</div>
         <div style="font-size:15px;font-weight:700;color:#ffffff;margin-bottom:4px;">Knowledge Network</div>
         <div style="font-size:12px;color:rgba(255,255,255,0.5);line-height:1.5;">View all additional Budgeting Resources.</div>
         <div style="margin-top:12px;display:inline-flex;align-items:center;gap:6px;background:#B87333;color:white;padding:5px 12px;border-radius:20px;font-size:11px;font-weight:700;">Open →</div>
       </button>
 
-      <button onclick="window.open('https://roscoeproperties.zendesk.com/hc/en-us/requests/new?ticket_form_id=8006602402843','_blank')" style="background:#1e2d4a;border:2px solid #B87333;border-radius:16px;padding:26px 22px;text-align:left;cursor:pointer;transition:all 0.2s;box-shadow:0 4px 20px rgba(0,0,0,0.3);font-family:inherit;" onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 8px 32px rgba(184,115,51,0.3)'" onmouseout="this.style.transform='';this.style.boxShadow='0 4px 20px rgba(0,0,0,0.3)'">
+      <button onclick="logTileClick('Submit a Support Request');window.open('https://roscoeproperties.zendesk.com/hc/en-us/requests/new?ticket_form_id=8006602402843','_blank')" style="background:#1e2d4a;border:2px solid #B87333;border-radius:16px;padding:26px 22px;text-align:left;cursor:pointer;transition:all 0.2s;box-shadow:0 4px 20px rgba(0,0,0,0.3);font-family:inherit;" onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 8px 32px rgba(184,115,51,0.3)'" onmouseout="this.style.transform='';this.style.boxShadow='0 4px 20px rgba(0,0,0,0.3)'">
         <div style="font-size:24px;margin-bottom:10px;">🎟️</div>
         <div style="font-size:15px;font-weight:700;color:#ffffff;margin-bottom:4px;">Submit a Support Request</div>
         <div style="font-size:12px;color:rgba(255,255,255,0.5);line-height:1.5;">Submit a support request for assistance with RealPage budgeting or any of the available Budget Hub resources.</div>
         <div style="margin-top:12px;display:inline-flex;align-items:center;gap:6px;background:#B87333;color:white;padding:5px 12px;border-radius:20px;font-size:11px;font-weight:700;">Open →</div>
       </button>
 
-      <button onclick="openActivityTracker()" style="background:#1e2d4a;border:2px solid #B87333;border-radius:16px;padding:26px 22px;text-align:left;cursor:pointer;transition:all 0.2s;box-shadow:0 4px 20px rgba(0,0,0,0.3);font-family:inherit;" onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 8px 32px rgba(184,115,51,0.3)'" onmouseout="this.style.transform='';this.style.boxShadow='0 4px 20px rgba(0,0,0,0.3)'">
+      <button onclick="navTile('Activity', openActivityTracker)" style="background:#1e2d4a;border:2px solid #B87333;border-radius:16px;padding:26px 22px;text-align:left;cursor:pointer;transition:all 0.2s;box-shadow:0 4px 20px rgba(0,0,0,0.3);font-family:inherit;" onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 8px 32px rgba(184,115,51,0.3)'" onmouseout="this.style.transform='';this.style.boxShadow='0 4px 20px rgba(0,0,0,0.3)'">
         <div style="font-size:24px;margin-bottom:10px;">📈</div>
         <div style="font-size:15px;font-weight:700;color:#ffffff;margin-bottom:4px;">Activity</div>
         <div style="font-size:12px;color:rgba(255,255,255,0.5);line-height:1.5;">See who accessed each tool, when, and what they changed.</div>
@@ -828,7 +828,7 @@ function setApprovalTile(adminAccess) {
     tile.style.opacity = '1';
     tile.style.cursor = 'pointer';
     tile.style.borderColor = '#B87333';
-    tile.onclick = openApprovalApp;
+    tile.onclick = function(){ navTile('Budget Approval Status Board', openApprovalApp); };
   } else {
     tile.style.opacity = '0.6';
     tile.style.cursor = 'not-allowed';
@@ -952,6 +952,24 @@ async function logActivity(action,details={}){
     property: details.property||'',
     description: details.description || (action + (details.property?' — '+details.property:''))
   });
+}
+
+// Log a Hub tile click. Returns the Firebase write promise.
+function logTileClick(name){
+  return logToFirebase({
+    name: currentUser.name||'Unknown',
+    email: currentUser.email||'',
+    role: currentUser.position||'',
+    tool: 'Budget Hub',
+    action: 'Opened '+name,
+    property: '',
+    description: 'Opened '+name+' from the Budget Hub'
+  });
+}
+// For same-tab tiles: log the click (capped so navigation isn't stalled) then go.
+async function navTile(name,go){
+  try{ await Promise.race([logTileClick(name), new Promise(r=>setTimeout(r,700))]); }catch(e){}
+  go();
 }
 
 async function mondayQuery(query) {
