@@ -65,12 +65,12 @@ th:hover{color:var(--text2);}
 td{padding:9px 12px;border-bottom:1px solid var(--border);color:var(--text);vertical-align:middle;}
 tr:hover td{background:rgba(0,0,0,.02);}
 tr.selected td{background:rgba(184,115,51,.05);}
-.cell-name{font-weight:500;white-space:nowrap;max-width:180px;overflow:hidden;text-overflow:ellipsis;cursor:pointer;color:var(--juniper);}
+.cell-name{font-weight:500;white-space:normal;overflow-wrap:break-word;min-width:180px;max-width:260px;cursor:pointer;color:var(--juniper);line-height:1.4;}
 .cell-name:hover{text-decoration:underline;}
-.cell-code{font-family:var(--mono);font-size:11px;color:var(--text3);background:var(--surface2);padding:2px 5px;border-radius:4px;}
+.cell-code{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--copper);background:rgba(184,115,51,.08);padding:2px 6px;border-radius:4px;}
 .cell-date{font-family:var(--mono);font-size:11px;color:var(--text2);white-space:nowrap;}
 .cell-date.empty{color:var(--text3);font-style:italic;font-family:var(--font);}
-.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap;}
+.badge{display:inline-flex;align-items:center;padding:4px 12px;border-radius:20px;font-size:13px;font-weight:600;white-space:nowrap;}
 .badge-approved{background:rgba(15,158,114,.12);color:var(--green);}
 .badge-submitted{background:rgba(37,99,235,.1);color:var(--blue);}
 .badge-reopened{background:rgba(214,59,59,.1);color:var(--red);}
@@ -179,14 +179,14 @@ tr.selected td{background:rgba(184,115,51,.05);}
 <div id="app" style="display:none;">
   <div class="header">
     <div class="header-left">
-      <div style="width:36px;height:36px;background:var(--juniper);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">✅</div>
+      <img src="RPMLivingLogo__Copper.jpg" style="width:36px;height:36px;background:#fff;border-radius:8px;padding:3px;object-fit:contain;flex-shrink:0;">
       <span class="header-title">Budget Approval Status</span>
       <div style="padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;display:none;background:rgba(184,115,51,.15);color:var(--copper);" id="admin-badge">ADMIN</div>
       <div class="year-switcher" id="year-switcher"></div>
     </div>
     <div class="header-right">
       <span id="header-user" style="font-size:12px;color:var(--text2);"></span>
-      <button class="btn btn-copper" onclick="openOccEntry()" title="Enter Occupancy">📊 Enter Occupancy</button>
+      <button class="btn btn-copper" id="occ-entry-btn" onclick="openOccEntry()" title="Enter Occupancy">📊 Enter Occupancy</button>
       <button class="btn btn-secondary" id="sync-btn" onclick="syncMonday()" title="Sync Monday">🔄 Sync</button>
       <button class="btn btn-secondary" onclick="openSettings()" title="Settings" id="settings-btn" style="display:none;">⚙️</button>
       <button class="btn btn-secondary" onclick="goToHub()">⌂ Hub</button>
@@ -212,7 +212,7 @@ tr.selected td{background:rgba(184,115,51,.05);}
       <hr class="sidebar-divider">
       <div class="sidebar-section">
         <div class="sidebar-label">Actions</div>
-        <button class="nav-item" onclick="exportReport()"><span class="nav-icon">📥</span>Export CSV</button>
+        <button class="nav-item" id="export-csv-btn" onclick="exportReport()"><span class="nav-icon">📥</span>Export CSV</button>
       </div>
     </div>
 
@@ -250,7 +250,7 @@ tr.selected td{background:rgba(184,115,51,.05);}
               <th onclick="sortBy('owner')">Owner ↕</th>
               <th onclick="sortBy('rvp')">RVP ↕</th>
               <th onclick="sortBy('approvalStatus')">Status ↕</th>
-              <th onclick="sortBy('budgetDue')">PMA Deadline ↕</th>
+              <th onclick="sortBy('budgetDue')">Budget Due Date ↕</th>
               <th onclick="sortBy('originalApprovalDate')">Orig. Approval ↕</th>
               <th onclick="sortBy('lastReopenDate')">Last Reopened ↕</th>
               <th onclick="sortBy('approvalDate')">Curr. Approval ↕</th>
@@ -465,6 +465,7 @@ const COL = {
   code:'text3', owner:'ownership_group', rvp:'text4',
   pmaDate:'pma_date1__1', ame:'text_mks7a02s', transitionDate:'transition_date3__1',
   pmsSystem:'pms_system9__1', budgetingId:'text_mks71h2f',
+  budgetDueDate:'date_mm5jrhqv', formerName:'text_mm5jwf2n',
   approvalFiles:'files', status:'status',
   occVacEntryDate:'date_mkn2e3df', approvalDate:'date6',
   originalApprovalDate:'dup__of_approved_date_mkmdema7',
@@ -665,7 +666,8 @@ async function syncMonday(){
       reopenCount:col(COL.reopenCount)||'0',
       lastReopenDate:col(COL.lastReopenDate),
       approvalLetter:col(COL.originalApprovalDate)?'Yes':'No',
-      budgetDue:col(COL.pmaDate),
+      budgetDue:col(COL.budgetDueDate),
+      formerName:col(COL.formerName),
       reopenHistory:[],
       dispo:col(COL.dispo),
     };
@@ -673,6 +675,53 @@ async function syncMonday(){
   filterTable();updateStats();
   hideLoading();
   toast(`Synced ${allItems.length} properties`,'success');
+  // Admins: pull Budget Due dates over from the Due Date Tracker board.
+  if(isAdmin)syncBudgetDueFromTracker().catch(e=>console.warn('budget due sync failed',e));
+}
+
+// ── BUDGET DUE DATE SYNC (Due Date Tracker board → this board) ──
+// Fills the "Budget Due Date" column from the tracker's "Budget Due to Client per PMA",
+// matching on Property Name, Former Property Name, or PMS ID.
+const TRACKER_BOARD='9029568429';
+const TRACKER_COLS={code:'text_mm2kj7b5',due:'date_mm2m56j6',formerName:'text_mm3cgane'};
+async function syncBudgetDueFromTracker(){
+  let items=[];
+  const first=await mondayQuery(`{boards(ids:${TRACKER_BOARD}){items_page(limit:500){cursor items{id name column_values(ids:["${TRACKER_COLS.code}","${TRACKER_COLS.due}","${TRACKER_COLS.formerName}"]){id text}}}}}`);
+  if(!first?.data?.boards?.[0])return;
+  let page=first.data.boards[0].items_page;
+  items=items.concat(page.items||[]);
+  let cursor=page.cursor;
+  while(cursor){
+    const next=await mondayQuery(`{next_items_page(limit:500,cursor:${JSON.stringify(cursor)}){cursor items{id name column_values(ids:["${TRACKER_COLS.code}","${TRACKER_COLS.due}","${TRACKER_COLS.formerName}"]){id text}}}}`);
+    if(!next?.data?.next_items_page)break;
+    items=items.concat(next.data.next_items_page.items||[]);
+    cursor=next.data.next_items_page.cursor;
+  }
+  // Build lookups: normalized name → due date; former name → due; code → due.
+  const norm=s=>String(s||'').trim().toLowerCase();
+  const byName={},byCode={};
+  items.forEach(it=>{
+    const col=id=>it.column_values.find(c=>c.id===id)?.text||'';
+    const due=col(TRACKER_COLS.due);
+    if(!due)return;
+    if(it.name)byName[norm(it.name)]=due;
+    const fmr=col(TRACKER_COLS.formerName);
+    if(fmr)byName[norm(fmr)]=due;
+    const code=col(TRACKER_COLS.code);
+    if(code)byCode[norm(code)]=due;
+  });
+  // Match each property (name → former name → PMS ID) and push differences to Monday.
+  let updated=0;
+  for(const p of allProperties){
+    const due=byName[norm(p.name)]||byName[norm(p.formerName)]||byCode[norm(p.code)];
+    if(due&&due!==p.budgetDue){
+      try{
+        await pushDateToMonday(p.id,COL.budgetDueDate,due);
+        p.budgetDue=due;updated++;
+      }catch(e){console.warn('budget due push failed',p.name,e);}
+    }
+  }
+  if(updated){filterTable();toast(`Budget Due dates updated for ${updated} properties`,'success');}
 }
 
 async function uploadFileToMonday(itemId, fileObj){
@@ -783,6 +832,14 @@ function launchApp(){
   if(isAdmin){
     document.getElementById('admin-badge').style.display='inline-block';
     document.getElementById('settings-btn').style.display='inline-flex';
+  }else{
+    // View-only mode for non-admins: search/browse only — no submissions,
+    // occupancy entry, CSV export, ticket queue, or reports.
+    ['occ-entry-btn','export-csv-btn','tab-queue','tab-report'].forEach(id=>{
+      const el=document.getElementById(id);if(el)el.style.display='none';
+    });
+    const selAll=document.getElementById('select-all-chk');
+    if(selAll)selAll.closest('th').style.display='none';
   }
   showLoading('Connecting to Monday...');
   initActivitySession();
@@ -871,7 +928,7 @@ function renderTable(){
     const showResubmit=p.approvalStatus==='Reopened';
     const hasReopen=p.reopenHistory&&p.reopenHistory.length>0||Number(p.reopenCount)>0;
     return `<tr class="${sel?'selected':''}">
-      <td><input type="checkbox" ${sel?'checked':''} onchange="toggleRowSelect('${p.id}',this)" style="accent-color:var(--copper);width:15px;height:15px;cursor:pointer;"></td>
+      ${isAdmin?`<td><input type="checkbox" ${sel?'checked':''} onchange="toggleRowSelect('${p.id}',this)" style="accent-color:var(--copper);width:15px;height:15px;cursor:pointer;"></td>`:''}
       <td><div class="cell-name" onclick="openDetailModal('${p.id}')">${esc(p.name)}</div>${hasReopen?`<div style="font-size:10px;color:var(--red);margin-top:2px;">🔄 ${p.reopenCount||p.reopenHistory.length} reopen${(p.reopenCount||p.reopenHistory.length)>1?'s':''}</div>`:''}</td>
       <td><span class="cell-code">${esc(p.code)||'—'}</span></td>
       <td style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(p.owner)||'—'}</td>
@@ -882,9 +939,9 @@ function renderTable(){
       <td><span class="cell-date ${!p.lastReopenDate?'empty':''}">${p.lastReopenDate||'—'}</span></td>
       <td><span class="cell-date ${p.approvalStatus==='Reopened'||!p.approvalDate?'empty':''}">${p.approvalStatus==='Reopened'?'—':p.approvalDate||'—'}</span></td>
       <td style="white-space:nowrap;"><div style="display:flex;gap:5px;flex-wrap:wrap;">
-        ${showSubmit?`<button class="btn-action btn-sm" onclick="openSubmitFlowFor('${p.id}')">📋 Submit</button>`:''}
-        ${showReopen?`<button class="btn-reopen btn-sm" onclick="openReopenFlow('${p.id}')">🔄 Reopen</button>`:''}
-        ${showResubmit?`<button class="btn-action btn-sm" onclick="openResubmitFlowFor('${p.id}')">📋 Resubmit</button>`:''}
+        ${isAdmin&&showSubmit?`<button class="btn-action btn-sm" onclick="openSubmitFlowFor('${p.id}')">📋 Submit</button>`:''}
+        ${isAdmin&&showReopen?`<button class="btn-reopen btn-sm" onclick="openReopenFlow('${p.id}')">🔄 Reopen</button>`:''}
+        ${isAdmin&&showResubmit?`<button class="btn-action btn-sm" onclick="openResubmitFlowFor('${p.id}')">📋 Resubmit</button>`:''}
       </div></td>
     </tr>`;
   }).join('');
@@ -967,7 +1024,7 @@ function openDetailModal(id){
     {key:'transitionDate',label:'Transition Date',val:p.transitionDate||''},
     {key:'ame',label:'AME',val:p.ame||''},
     {key:'pmaDate',label:'PMA Date',val:p.pmaDate||''},
-    {key:'budgetDue',label:'PMA Deadline',val:p.budgetDue||''},
+    {key:'budgetDue',label:'Budget Due Date',val:p.budgetDue||'',readOnly:true},
     {key:'originalApprovalDate',label:'Original Approval Date',val:p.originalApprovalDate||'—',readOnly:true},
     {key:'_mostRecent',label:'Most Recent Approval',val:mostRecentApproval,readOnly:true},
     {key:'burden',label:'Burden %',val:p.burden||''},

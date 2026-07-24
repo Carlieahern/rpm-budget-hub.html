@@ -821,20 +821,13 @@ function setApprovalTile(adminAccess) {
   const tile = document.getElementById('approval-tile');
   const link = document.getElementById('approval-admin-link');
   const badge = document.getElementById('approval-locked-badge');
-  // Badge always reads "Coming Soon"; admins can still open it (whole tile clickable).
+  // Open to everyone (view-only inside for non-admins; the app hides all actions).
   link.style.display = 'none';
   badge.style.display = 'inline-flex';
-  if (adminAccess) {
-    tile.style.opacity = '1';
-    tile.style.cursor = 'pointer';
-    tile.style.borderColor = '#B87333';
-    tile.onclick = function(){ navTile('Budget Approval Status Board', openApprovalApp); };
-  } else {
-    tile.style.opacity = '0.6';
-    tile.style.cursor = 'not-allowed';
-    tile.style.borderColor = '#dde0e8';
-    tile.onclick = null;
-  }
+  tile.style.opacity = '1';
+  tile.style.cursor = 'pointer';
+  tile.style.borderColor = '#B87333';
+  tile.onclick = function(){ navTile('Budget Approval Status Board', openApprovalApp); };
 }
 
 function openApprovalApp() {
