@@ -8,17 +8,17 @@
 <style>
 :root{--bg:#f4f5f7;--surface:#fff;--surface2:#f0f1f4;--surface3:#e4e6ec;--border:#dde0e8;--border2:#c8ccd8;--copper:#B87333;--juniper:#3D4F4A;--green:#0f9e72;--yellow:#c49a00;--red:#d63b3b;--blue:#2563eb;--text:#1a1d2e;--text2:#4a5068;--text3:#8b92a8;--font:'DM Sans',sans-serif;--mono:'DM Mono',monospace;}
 *{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;font-size:15px;}
 .header{background:#fff;border-bottom:1px solid var(--border);padding:0 24px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
 .header-left{display:flex;align-items:center;gap:14px;}
 .header-logo{height:32px;width:auto;}
-.header-title{font-size:15px;font-weight:600;color:var(--juniper);}
+.header-title{font-size:17px;font-weight:600;color:var(--juniper);}
 .year-switcher{display:flex;gap:6px;margin-left:8px;}
 .year-btn{padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;border:2px solid var(--copper);background:transparent;color:var(--copper);font-family:var(--mono);transition:all .2s;}
 .year-btn:hover{background:rgba(184,115,51,.1);}
 .year-btn.active{background:var(--copper);color:#fff;}
 .header-right{display:flex;align-items:center;gap:10px;}
-.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:8px;font-family:var(--font);font-size:13px;font-weight:500;cursor:pointer;border:none;transition:all .2s;white-space:nowrap;}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:8px;font-family:var(--font);font-size:14px;font-weight:500;cursor:pointer;border:none;transition:all .2s;white-space:nowrap;}
 .btn-primary{background:var(--juniper);color:#fff;}.btn-primary:hover{background:#2e3b38;}
 .btn-secondary{background:var(--surface2);border:1px solid var(--border);color:var(--text2);}.btn-secondary:hover{border-color:var(--copper);color:var(--copper);}
 .btn-copper{background:var(--copper);color:#fff;}.btn-copper:hover{background:#9e6229;}
@@ -30,7 +30,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .sidebar{width:210px;background:var(--surface);border-right:1px solid var(--border);padding:16px 0;flex-shrink:0;overflow-y:auto;}
 .sidebar-section{padding:0 12px;margin-bottom:8px;}
 .sidebar-label{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:1px;padding:0 8px;margin-bottom:4px;}
-.nav-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;cursor:pointer;color:var(--text2);font-size:13px;font-weight:500;transition:all .15s;border:none;background:none;width:100%;text-align:left;}
+.nav-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;cursor:pointer;color:var(--text2);font-size:14px;font-weight:500;transition:all .15s;border:none;background:none;width:100%;text-align:left;}
 .nav-item:hover{background:var(--surface2);color:var(--text);}
 .nav-item.active{background:rgba(184,115,51,.1);color:var(--copper);}
 .nav-icon{font-size:15px;width:18px;text-align:center;}
@@ -58,17 +58,17 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .bulk-btn{padding:6px 14px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.1);color:#fff;font-family:var(--font);}
 .bulk-btn:hover{background:rgba(255,255,255,.2);}
 .bulk-btn-clear{background:transparent;border-color:transparent;color:rgba(255,255,255,.7);}
-table{width:100%;border-collapse:collapse;font-size:12.5px;}
+table{width:100%;border-collapse:collapse;font-size:14px;}
 thead{background:var(--surface);position:sticky;top:0;z-index:10;}
-th{padding:9px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border);white-space:nowrap;cursor:pointer;user-select:none;}
+th{padding:10px 12px;text-align:left;font-size:12px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border);white-space:nowrap;cursor:pointer;user-select:none;}
 th:hover{color:var(--text2);}
 td{padding:9px 12px;border-bottom:1px solid var(--border);color:var(--text);vertical-align:middle;}
 tr:hover td{background:rgba(0,0,0,.02);}
 tr.selected td{background:rgba(184,115,51,.05);}
 .cell-name{font-weight:500;white-space:normal;overflow-wrap:break-word;min-width:180px;max-width:260px;cursor:pointer;color:var(--juniper);line-height:1.4;}
 .cell-name:hover{text-decoration:underline;}
-.cell-code{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--copper);background:rgba(184,115,51,.08);padding:2px 6px;border-radius:4px;}
-.cell-date{font-family:var(--mono);font-size:11px;color:var(--text2);white-space:nowrap;}
+.cell-code{font-family:var(--mono);font-size:13px;font-weight:600;color:var(--copper);background:rgba(184,115,51,.08);padding:2px 6px;border-radius:4px;}
+.cell-date{font-family:var(--mono);font-size:13px;color:var(--text2);white-space:nowrap;}
 .cell-date.empty{color:var(--text3);font-style:italic;font-family:var(--font);}
 .badge{display:inline-flex;align-items:center;padding:4px 12px;border-radius:20px;font-size:13px;font-weight:600;white-space:nowrap;}
 .badge-approved{background:rgba(15,158,114,.12);color:var(--green);}
@@ -89,7 +89,7 @@ tr.selected td{background:rgba(184,115,51,.05);}
 .form-group{margin-bottom:14px;}
 .form-label{font-size:11px;font-weight:600;color:var(--text2);margin-bottom:6px;display:block;text-transform:uppercase;letter-spacing:.5px;}
 .form-label .req{color:var(--red);margin-left:2px;}
-.form-input,.form-select,.form-textarea{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:9px 12px;color:var(--text);font-family:var(--font);font-size:13px;outline:none;transition:border-color .2s;}
+.form-input,.form-select,.form-textarea{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:9px 12px;color:var(--text);font-family:var(--font);font-size:14px;outline:none;transition:border-color .2s;}
 .form-input:focus,.form-select:focus,.form-textarea:focus{border-color:var(--copper);}
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:1000;align-items:center;justify-content:center;padding:20px;}
 .modal-overlay.open{display:flex;}
@@ -124,7 +124,7 @@ tr.selected td{background:rgba(184,115,51,.05);}
 .verify-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);}
 .verify-row:last-child{border-bottom:none;}
 .verify-label{font-size:12px;color:var(--text3);width:160px;flex-shrink:0;}
-.verify-value{font-size:13px;font-weight:500;color:var(--text);flex:1;}
+.verify-value{font-size:14px;font-weight:500;color:var(--text);flex:1;}
 .verify-edit-input{flex:1;background:var(--surface2);border:1px solid var(--copper);border-radius:6px;padding:5px 8px;font-family:var(--font);font-size:13px;color:var(--text);outline:none;}
 .progress-steps{display:flex;align-items:flex-start;margin-bottom:20px;}
 .step-col{display:flex;flex-direction:column;align-items:center;flex:1;}
@@ -254,7 +254,7 @@ tr.selected td{background:rgba(184,115,51,.05);}
               <th onclick="sortBy('originalApprovalDate')">Orig. Approval ↕</th>
               <th onclick="sortBy('lastReopenDate')">Last Reopened ↕</th>
               <th onclick="sortBy('approvalDate')">Curr. Approval ↕</th>
-              <th>Actions</th>
+              <th id="actions-th">Actions</th>
             </tr></thead>
             <tbody id="table-body"></tbody>
           </table>
@@ -835,7 +835,7 @@ function launchApp(){
   }else{
     // View-only mode for non-admins: search/browse only — no submissions,
     // occupancy entry, CSV export, ticket queue, or reports.
-    ['occ-entry-btn','export-csv-btn','tab-queue','tab-report'].forEach(id=>{
+    ['occ-entry-btn','export-csv-btn','tab-queue','tab-report','actions-th'].forEach(id=>{
       const el=document.getElementById(id);if(el)el.style.display='none';
     });
     const selAll=document.getElementById('select-all-chk');
@@ -935,14 +935,14 @@ function renderTable(){
       <td>${esc(p.rvp)||'—'}</td>
       <td>${statusBadge(p.approvalStatus)}</td>
       <td><span class="cell-date ${!p.budgetDue?'empty':''}">${fmtDate(p.budgetDue)||'—'}</span></td>
-      <td><span class="cell-date ${!p.originalApprovalDate?'empty':''}">${p.originalApprovalDate||'—'}</span></td>
-      <td><span class="cell-date ${!p.lastReopenDate?'empty':''}">${p.lastReopenDate||'—'}</span></td>
-      <td><span class="cell-date ${p.approvalStatus==='Reopened'||!p.approvalDate?'empty':''}">${p.approvalStatus==='Reopened'?'—':p.approvalDate||'—'}</span></td>
-      <td style="white-space:nowrap;"><div style="display:flex;gap:5px;flex-wrap:wrap;">
-        ${isAdmin&&showSubmit?`<button class="btn-action btn-sm" onclick="openSubmitFlowFor('${p.id}')">📋 Submit</button>`:''}
-        ${isAdmin&&showReopen?`<button class="btn-reopen btn-sm" onclick="openReopenFlow('${p.id}')">🔄 Reopen</button>`:''}
-        ${isAdmin&&showResubmit?`<button class="btn-action btn-sm" onclick="openResubmitFlowFor('${p.id}')">📋 Resubmit</button>`:''}
-      </div></td>
+      <td><span class="cell-date ${!p.originalApprovalDate?'empty':''}">${fmtDateSlash(p.originalApprovalDate)||'—'}</span></td>
+      <td><span class="cell-date ${!p.lastReopenDate?'empty':''}">${fmtDateSlash(p.lastReopenDate)||'—'}</span></td>
+      <td><span class="cell-date ${p.approvalStatus==='Reopened'||!p.approvalDate?'empty':''}">${p.approvalStatus==='Reopened'?'—':fmtDateSlash(p.approvalDate)||'—'}</span></td>
+      ${isAdmin?`<td style="white-space:nowrap;"><div style="display:flex;gap:5px;flex-wrap:wrap;">
+        ${showSubmit?`<button class="btn-action btn-sm" onclick="openSubmitFlowFor('${p.id}')">📋 Submit</button>`:''}
+        ${showReopen?`<button class="btn-reopen btn-sm" onclick="openReopenFlow('${p.id}')">🔄 Reopen</button>`:''}
+        ${showResubmit?`<button class="btn-action btn-sm" onclick="openResubmitFlowFor('${p.id}')">📋 Resubmit</button>`:''}
+      </div></td>`:''}
     </tr>`;
   }).join('');
   renderPagination();
@@ -1025,15 +1025,15 @@ function openDetailModal(id){
     {key:'ame',label:'AME',val:p.ame||''},
     {key:'pmaDate',label:'PMA Date',val:p.pmaDate||''},
     {key:'budgetDue',label:'Budget Due Date',val:fmtDate(p.budgetDue)||'',readOnly:true},
-    {key:'originalApprovalDate',label:'Original Approval Date',val:p.originalApprovalDate||'—',readOnly:true},
-    {key:'_mostRecent',label:'Most Recent Approval',val:mostRecentApproval,readOnly:true},
+    {key:'originalApprovalDate',label:'Original Approval Date',val:fmtDateSlash(p.originalApprovalDate)||'—',readOnly:true},
+    {key:'_mostRecent',label:'Most Recent Approval',val:fmtDateSlash(mostRecentApproval)||'—',readOnly:true},
     {key:'burden',label:'Burden %',val:p.burden||''},
     {key:'payrollDetail',label:'Payroll Detail',val:p.payrollDetail||''},
     {key:'state',label:'State',val:p.state||''},
     {key:'budgetingId',label:'Budgeting ID',val:p.budgetingId||''},
     {key:'occVacEntryDate',label:'Occ/Vac Entry Date',val:p.occVacEntryDate||''},
     {key:'_reopenCount',label:'# of Reopens',val:String(reopenCount),readOnly:true},
-    {key:'_lastReopen',label:'Last Reopen Date',val:lastReopen,readOnly:true},
+    {key:'_lastReopen',label:'Last Reopen Date',val:fmtDateSlash(lastReopen)||'—',readOnly:true},
   ];
 
   const infoHtml=infoFields.map(f=>{
@@ -1854,6 +1854,16 @@ function fmtDate(s){
   if(!m)return s;
   const months=['Jan.','Feb.','Mar.','Apr.','May','Jun.','Jul.','Aug.','Sep.','Oct.','Nov.','Dec.'];
   return `${months[Number(m[2])-1]} ${Number(m[3])}, ${m[1]}`;
+}
+// Any parseable date → "MM/DD/YYYY" (handles "2026-10-15" and "Jun 23, 2026"). Else pass through.
+function fmtDateSlash(s){
+  if(!s)return s;
+  const t=String(s).trim();
+  const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(t);
+  if(m)return `${m[2]}/${m[3]}/${m[1]}`;
+  const d=new Date(t);
+  if(isNaN(d))return s;
+  return `${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}/${d.getFullYear()}`;
 }
 function toast(msg,type='success'){const c=document.getElementById('toast-container');const t=document.createElement('div');t.className=`toast ${type==='error'?'error':type==='warning'?'warning':''}`;t.innerHTML=`<span>${type==='success'?'✓':'⚠'}</span> ${msg}`;c.appendChild(t);setTimeout(()=>t.remove(),4000);}
 document.querySelectorAll('.modal-overlay').forEach(o=>{o.addEventListener('click',e=>{if(e.target===o){if(o.id==='occ-form-modal'){closeOccForm();}else{o.classList.remove('open');}}});});
