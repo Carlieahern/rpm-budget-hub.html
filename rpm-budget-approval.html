@@ -253,7 +253,7 @@ tr.selected td{background:rgba(184,115,51,.05);}
               <th onclick="sortBy('owner')">Owner ↕</th>
               <th onclick="sortBy('rvp')">RVP ↕</th>
               <th onclick="sortBy('approvalStatus')">Status ↕</th>
-              <th onclick="sortBy('budgetDue')">Budget Due Date ↕</th>
+              <th id="budgetdue-th" class="col-budgetdue" onclick="sortBy('budgetDue')">Budget Due Date ↕</th>
               <th onclick="sortBy('originalApprovalDate')">Orig. Approval ↕</th>
               <th onclick="sortBy('lastReopenDate')">Last Reopened ↕</th>
               <th onclick="sortBy('approvalDate')">Curr. Approval ↕</th>
@@ -462,6 +462,9 @@ function applyYearMode(){
   if(actTh)actTh.style.display=act?'':'none';
   const selAll=document.getElementById('select-all-chk');
   if(selAll)selAll.closest('th').style.display=act?'':'none';
+  // Budget Due Date only applies to interactive years (2027) — hide it on 2026/other.
+  const showBudgetDue=!yearReadOnly();
+  document.querySelectorAll('.col-budgetdue').forEach(el=>{el.style.display=showBudgetDue?'':'none';});
 }
 let yearBoards  = {};  // { '2027': '18413186439' }
 let yearItemIds = {};  // { '2027': 'monday_item_id' } — used for deletion
@@ -963,6 +966,7 @@ function statusBadge(s){
 function renderTable(){
   applyYearMode();
   const canAct=isAdmin&&!yearReadOnly();
+  const showBudgetDue=!yearReadOnly();
   const start=(currentPage-1)*PAGE_SIZE;
   const items=filteredProperties.slice(start,start+PAGE_SIZE);
   const tbody=document.getElementById('table-body');
@@ -980,7 +984,7 @@ function renderTable(){
       <td style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(p.owner)||'—'}</td>
       <td>${esc(p.rvp)||'—'}</td>
       <td>${statusBadge(p.approvalStatus)}</td>
-      <td><span class="cell-date ${!p.budgetDue?'empty':''}">${fmtDate(p.budgetDue)||'—'}</span></td>
+      ${showBudgetDue?`<td class="col-budgetdue"><span class="cell-date ${!p.budgetDue?'empty':''}">${fmtDate(p.budgetDue)||'—'}</span></td>`:''}
       <td><span class="cell-date ${!p.originalApprovalDate?'empty':''}">${fmtDateSlash(p.originalApprovalDate)||'—'}</span></td>
       <td><span class="cell-date ${!p.lastReopenDate?'empty':''}">${fmtDateSlash(p.lastReopenDate)||'—'}</span></td>
       <td><span class="cell-date ${p.approvalStatus==='Reopened'||!p.approvalDate?'empty':''}">${p.approvalStatus==='Reopened'?'—':fmtDateSlash(p.approvalDate)||'—'}</span></td>
