@@ -678,8 +678,9 @@ async function syncMonday(){
   filterTable();updateStats();
   hideLoading();
   toast(`Synced ${allItems.length} properties`,'success');
-  // Admins: pull Budget Due dates, RVPs, and Dispo status from the Due Date Tracker.
-  if(isAdmin)syncFromTracker().catch(e=>console.warn('tracker sync failed',e));
+  // Everyone pulls Budget Due dates, RVPs, and Dispo from the Due Date Tracker so the
+  // app stays current; only admin sessions write the changes back to Monday.
+  syncFromTracker(isAdmin).catch(e=>console.warn('tracker sync failed',e));
 }
 
 // ── DUE DATE TRACKER SYNC (tracker board → this board) ──
@@ -689,7 +690,7 @@ async function syncMonday(){
 // which moves the item to the Dispo group in Monday and drops it from the app.
 const TRACKER_BOARD='9029568429';
 const TRACKER_COLS={code:'text_mm2kj7b5',due:'date_mm2m56j6',formerName:'text_mm3cgane',rvp:'text_mm2k6pp',completion:'color_mm2mfj3s'};
-async function syncFromTracker(){
+async function syncFromTracker(write){
   const colIds=`["${TRACKER_COLS.code}","${TRACKER_COLS.due}","${TRACKER_COLS.formerName}","${TRACKER_COLS.rvp}","${TRACKER_COLS.completion}"]`;
   let items=[];
   const first=await mondayQuery(`{boards(ids:${TRACKER_BOARD}){items_page(limit:500){cursor items{id name column_values(ids:${colIds}){id text}}}}}`);
@@ -722,16 +723,18 @@ async function syncFromTracker(){
     if(!rec)continue;
     try{
       if(rec.due&&rec.due!==p.budgetDue){
-        await pushDateToMonday(p.id,COL.budgetDueDate,rec.due);
+        if(write)await pushDateToMonday(p.id,COL.budgetDueDate,rec.due);
         p.budgetDue=rec.due;updated++;
       }
       if(rec.rvp&&rec.rvp!==p.rvp){
-        await pushToMonday(p.id,COL.rvp,rec.rvp);
+        if(write)await pushToMonday(p.id,COL.rvp,rec.rvp);
         p.rvp=rec.rvp;updated++;
       }
       if(rec.dispo&&p.dispo!=='✓'){
-        const val=JSON.stringify(JSON.stringify({label:'✓'}));
-        await mondayMutation(`mutation{change_column_value(board_id:${MONDAY_BOARD},item_id:${p.id},column_id:"${COL.dispo}",value:${val}){id}}`);
+        if(write){
+          const val=JSON.stringify(JSON.stringify({label:'✓'}));
+          await mondayMutation(`mutation{change_column_value(board_id:${MONDAY_BOARD},item_id:${p.id},column_id:"${COL.dispo}",value:${val}){id}}`);
+        }
         p.dispo='✓';disposed++;
       }
     }catch(e){console.warn('tracker sync push failed',p.name,e);}
@@ -739,7 +742,7 @@ async function syncFromTracker(){
   if(disposed)allProperties=allProperties.filter(p=>p.dispo!=='✓');
   if(updated||disposed){
     filterTable();updateStats();
-    toast(`Tracker sync: ${updated} field${updated===1?'':'s'} updated${disposed?`, ${disposed} disposed`:''}`,'success');
+    if(write)toast(`Tracker sync: ${updated} field${updated===1?'':'s'} updated${disposed?`, ${disposed} disposed`:''}`,'success');
   }
 }
 
