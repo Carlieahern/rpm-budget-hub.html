@@ -256,8 +256,8 @@ tr.selected td{background:rgba(184,115,51,.05);}
               <th id="budgetdue-th" class="col-budgetdue" onclick="sortBy('budgetDue')">Budget Due Date ↕</th>
               <th onclick="sortBy('originalApprovalDate')">Orig. Approval ↕</th>
               <th onclick="sortBy('lastReopenDate')">Last Reopened ↕</th>
-              <th onclick="sortBy('approvalDate')">Curr. Approval ↕</th>
               <th onclick="sortBy('reopenCount')">Reopens ↕</th>
+              <th onclick="sortBy('approvalDate')">Curr. Approval ↕</th>
               <th id="actions-th">Actions</th>
             </tr></thead>
             <tbody id="table-body"></tbody>
@@ -988,8 +988,8 @@ function renderTable(){
       ${showBudgetDue?`<td class="col-budgetdue"><span class="cell-date ${!p.budgetDue?'empty':''}">${fmtDate(p.budgetDue)||'—'}</span></td>`:''}
       <td><span class="cell-date ${!p.originalApprovalDate?'empty':''}">${fmtDateSlash(p.originalApprovalDate)||'—'}</span></td>
       <td><span class="cell-date ${!p.lastReopenDate?'empty':''}">${fmtDateSlash(p.lastReopenDate)||'—'}</span></td>
-      <td><span class="cell-date ${p.approvalStatus==='Reopened'||!p.approvalDate?'empty':''}">${p.approvalStatus==='Reopened'?'—':fmtDateSlash(p.approvalDate)||'—'}</span></td>
       <td style="text-align:center;">${(()=>{const n=Number(p.reopenCount)||p.reopenHistory.length||0;return n>0?`<span style="font-family:var(--mono);font-weight:600;color:var(--red);">${n}</span>`:'<span class="cell-date empty">—</span>';})()}</td>
+      <td><span class="cell-date ${p.approvalStatus==='Reopened'||!p.approvalDate?'empty':''}">${p.approvalStatus==='Reopened'?'—':fmtDateSlash(p.approvalDate)||'—'}</span></td>
       ${canAct?`<td style="white-space:nowrap;"><div style="display:flex;gap:5px;flex-wrap:wrap;">
         ${showSubmit?`<button class="btn-action btn-sm" onclick="openSubmitFlowFor('${p.id}')">📋 Submit</button>`:''}
         ${showReopen?`<button class="btn-reopen btn-sm" onclick="openReopenFlow('${p.id}')">🔄 Reopen</button>`:''}
