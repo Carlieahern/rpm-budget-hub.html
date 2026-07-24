@@ -448,6 +448,21 @@ const MONDAY_API_TOKEN = 'eyJhbGciOiJIUzI1NiJ9.eyJ0aWQiOjYzODMwNTU0NywiYWFpIjoxM
 const CONFIG_BOARD = '18413190457';
 const ACTIVITY_BOARD = '18407376110';
 let MONDAY_BOARD = '18413186439'; // default 2027, overwritten by loadYearConfig
+// Only the 2027 board is interactive (submits, occupancy, tracker writes). Every other
+// year board — e.g. 2026 (9442223907), built differently — is view-only for everyone,
+// until Zendesk OAuth work makes future years interactive.
+const INTERACTIVE_BOARD='18413186439';
+function yearReadOnly(){return String(MONDAY_BOARD)!==INTERACTIVE_BOARD;}
+// Show/hide the action UI for the current year + role. Runs on every table render.
+function applyYearMode(){
+  const act=isAdmin&&!yearReadOnly();
+  const occBtn=document.getElementById('occ-entry-btn');
+  if(occBtn)occBtn.style.display=act?'':'none';
+  const actTh=document.getElementById('actions-th');
+  if(actTh)actTh.style.display=act?'':'none';
+  const selAll=document.getElementById('select-all-chk');
+  if(selAll)selAll.closest('th').style.display=act?'':'none';
+}
 let yearBoards  = {};  // { '2027': '18413186439' }
 let yearItemIds = {};  // { '2027': 'monday_item_id' } — used for deletion
 const ACTIVITY_COLS = {
@@ -691,6 +706,8 @@ async function syncMonday(){
 const TRACKER_BOARD='9029568429';
 const TRACKER_COLS={code:'text_mm2kj7b5',due:'date_mm2m56j6',formerName:'text_mm3cgane',rvp:'text_mm2k6pp',completion:'color_mm2mfj3s'};
 async function syncFromTracker(write){
+  if(yearReadOnly())return; // tracker feeds the current cycle only — never touch read-only year boards
+  const board=MONDAY_BOARD; // abort if the user switches years mid-run
   const colIds=`["${TRACKER_COLS.code}","${TRACKER_COLS.due}","${TRACKER_COLS.formerName}","${TRACKER_COLS.rvp}","${TRACKER_COLS.completion}"]`;
   let items=[];
   const first=await mondayQuery(`{boards(ids:${TRACKER_BOARD}){items_page(limit:500){cursor items{id name column_values(ids:${colIds}){id text}}}}}`);
@@ -719,6 +736,7 @@ async function syncFromTracker(write){
   // Match each property (name → former name → PMS ID) and push differences to Monday.
   let updated=0,disposed=0;
   for(const p of allProperties){
+    if(MONDAY_BOARD!==board)return; // year switched mid-sync — stop before writing to the wrong board
     const rec=byName[norm(p.name)]||byName[norm(p.formerName)]||byCode[norm(p.code)];
     if(!rec)continue;
     try{
@@ -733,7 +751,7 @@ async function syncFromTracker(write){
       if(rec.dispo&&p.dispo!=='✓'){
         if(write){
           const val=JSON.stringify(JSON.stringify({label:'✓'}));
-          await mondayMutation(`mutation{change_column_value(board_id:${MONDAY_BOARD},item_id:${p.id},column_id:"${COL.dispo}",value:${val}){id}}`);
+          await mondayMutation(`mutation{change_column_value(board_id:${board},item_id:${p.id},column_id:"${COL.dispo}",value:${val}){id}}`);
         }
         p.dispo='✓';disposed++;
       }
@@ -939,6 +957,8 @@ function statusBadge(s){
 }
 
 function renderTable(){
+  applyYearMode();
+  const canAct=isAdmin&&!yearReadOnly();
   const start=(currentPage-1)*PAGE_SIZE;
   const items=filteredProperties.slice(start,start+PAGE_SIZE);
   const tbody=document.getElementById('table-body');
@@ -950,7 +970,7 @@ function renderTable(){
     const showResubmit=p.approvalStatus==='Reopened';
     const hasReopen=p.reopenHistory&&p.reopenHistory.length>0||Number(p.reopenCount)>0;
     return `<tr class="${sel?'selected':''}">
-      ${isAdmin?`<td><input type="checkbox" ${sel?'checked':''} onchange="toggleRowSelect('${p.id}',this)" style="accent-color:var(--copper);width:15px;height:15px;cursor:pointer;"></td>`:''}
+      ${canAct?`<td><input type="checkbox" ${sel?'checked':''} onchange="toggleRowSelect('${p.id}',this)" style="accent-color:var(--copper);width:15px;height:15px;cursor:pointer;"></td>`:''}
       <td><div class="cell-name" onclick="openDetailModal('${p.id}')">${esc(p.name)}</div>${hasReopen?`<div style="font-size:10px;color:var(--red);margin-top:2px;">🔄 ${p.reopenCount||p.reopenHistory.length} reopen${(p.reopenCount||p.reopenHistory.length)>1?'s':''}</div>`:''}</td>
       <td><span class="cell-code">${esc(p.code)||'—'}</span></td>
       <td style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(p.owner)||'—'}</td>
@@ -960,7 +980,7 @@ function renderTable(){
       <td><span class="cell-date ${!p.originalApprovalDate?'empty':''}">${fmtDateSlash(p.originalApprovalDate)||'—'}</span></td>
       <td><span class="cell-date ${!p.lastReopenDate?'empty':''}">${fmtDateSlash(p.lastReopenDate)||'—'}</span></td>
       <td><span class="cell-date ${p.approvalStatus==='Reopened'||!p.approvalDate?'empty':''}">${p.approvalStatus==='Reopened'?'—':fmtDateSlash(p.approvalDate)||'—'}</span></td>
-      ${isAdmin?`<td style="white-space:nowrap;"><div style="display:flex;gap:5px;flex-wrap:wrap;">
+      ${canAct?`<td style="white-space:nowrap;"><div style="display:flex;gap:5px;flex-wrap:wrap;">
         ${showSubmit?`<button class="btn-action btn-sm" onclick="openSubmitFlowFor('${p.id}')">📋 Submit</button>`:''}
         ${showReopen?`<button class="btn-reopen btn-sm" onclick="openReopenFlow('${p.id}')">🔄 Reopen</button>`:''}
         ${showResubmit?`<button class="btn-action btn-sm" onclick="openResubmitFlowFor('${p.id}')">📋 Resubmit</button>`:''}
