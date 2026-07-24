@@ -190,7 +190,7 @@ tr.selected td{background:rgba(184,115,51,.05);}
     <div class="header-right">
       <span id="header-user" style="font-size:12px;color:var(--text2);"></span>
       <button class="btn btn-copper" id="occ-entry-btn" onclick="openOccEntry()" title="Enter Occupancy">📊 Enter Occupancy</button>
-      <button class="btn btn-secondary" id="sync-btn" onclick="syncMonday()" title="Sync Monday">🔄 Sync</button>
+      <button class="btn btn-secondary" id="sync-btn" onclick="syncMonday(true)" title="Sync Monday">🔄 Sync</button>
       <button class="btn btn-secondary" onclick="openSettings()" title="Settings" id="settings-btn" style="display:none;">⚙️</button>
       <button class="btn btn-secondary" onclick="goToHub()">⌂ Hub</button>
     </div>
@@ -379,7 +379,7 @@ tr.selected td{background:rgba(184,115,51,.05);}
       <div class="form-section">
         <div class="form-section-title">Data</div>
         <p style="font-size:13px;color:var(--text2);margin-bottom:12px;">Manually pull the latest data from Monday at any time.</p>
-        <button class="btn btn-secondary" onclick="syncMonday();closeModal('settings-modal')">🔄 Sync Now</button>
+        <button class="btn btn-secondary" onclick="syncMonday(true);closeModal('settings-modal')">🔄 Sync Now</button>
         <div style="font-size:11px;color:var(--text3);margin-top:8px;">Auto-syncs every 2 minutes while the app is open.</div>
       </div>
     </div>
@@ -561,7 +561,7 @@ async function loadYearConfig(){
     currentYear=2027;
   }
   renderYearButtons();
-  syncMonday();
+  syncMonday(true);
 }
 
 function renderYearButtons(){
@@ -617,16 +617,17 @@ async function archiveYear(year){
       const rem=Object.keys(yearBoards).sort();
       currentYear=parseInt(rem[rem.length-1]);
       MONDAY_BOARD=yearBoards[currentYear.toString()];
-      syncMonday();
+      syncMonday(true);
     }
     renderYearButtons();renderYearListSettings();
     toast(`${year} removed from app`,'success');
   }catch(e){console.warn('archiveYear failed',e);toast('Failed to archive year','error');}
 }
 
-async function syncMonday(){
+async function syncMonday(showOverlay){
   const btn=document.getElementById('sync-btn');
   if(btn){btn.textContent='🔄 Syncing...';btn.disabled=true;}
+  if(showOverlay)showLoading('Loading '+currentYear+' properties...');
 
   // Fetch all items using cursor-based pagination (handles 800-1000+ properties)
   let allItems=[];
@@ -692,7 +693,7 @@ async function syncMonday(){
   }).filter(p=>p.dispo!=='✓'); // disposed properties stay out of the app
   filterTable();updateStats();
   hideLoading();
-  toast(`Synced ${allItems.length} properties`,'success');
+  if(showOverlay)toast(`Loaded ${allProperties.length} properties`,'success');
   // Everyone pulls Budget Due dates, RVPs, and Dispo from the Due Date Tracker so the
   // app stays current; only admin sessions write the changes back to Monday.
   syncFromTracker(isAdmin).catch(e=>console.warn('tracker sync failed',e));
@@ -1863,11 +1864,15 @@ function exportQueue(){
 
 // ── MISC ──
 function switchYear(y){
+  if(currentYear===y)return;
   currentYear=y;
   MONDAY_BOARD=yearBoards[y.toString()]||MONDAY_BOARD;
   renderYearButtons();
   document.getElementById('report-title').textContent=y+' Approval Status Report';
-  syncMonday();
+  // Clear the old year's rows immediately and show a loading screen while the new year loads.
+  allProperties=[];filteredProperties=[];selectedIds.clear();
+  renderTable();updateStats();
+  syncMonday(true);
 }
 function goToHub(){
   localStorage.setItem('rpm_hub_return', JSON.stringify({name:currentUser.name,firstName:currentUser.firstName,lastName:currentUser.lastName,email:currentUser.email,position:currentUser.position,isAdmin}));
