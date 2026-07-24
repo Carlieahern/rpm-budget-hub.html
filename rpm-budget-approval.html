@@ -934,7 +934,7 @@ function renderTable(){
       <td style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(p.owner)||'—'}</td>
       <td>${esc(p.rvp)||'—'}</td>
       <td>${statusBadge(p.approvalStatus)}</td>
-      <td><span class="cell-date ${!p.budgetDue?'empty':''}">${p.budgetDue||'—'}</span></td>
+      <td><span class="cell-date ${!p.budgetDue?'empty':''}">${fmtDate(p.budgetDue)||'—'}</span></td>
       <td><span class="cell-date ${!p.originalApprovalDate?'empty':''}">${p.originalApprovalDate||'—'}</span></td>
       <td><span class="cell-date ${!p.lastReopenDate?'empty':''}">${p.lastReopenDate||'—'}</span></td>
       <td><span class="cell-date ${p.approvalStatus==='Reopened'||!p.approvalDate?'empty':''}">${p.approvalStatus==='Reopened'?'—':p.approvalDate||'—'}</span></td>
@@ -1024,7 +1024,7 @@ function openDetailModal(id){
     {key:'transitionDate',label:'Transition Date',val:p.transitionDate||''},
     {key:'ame',label:'AME',val:p.ame||''},
     {key:'pmaDate',label:'PMA Date',val:p.pmaDate||''},
-    {key:'budgetDue',label:'Budget Due Date',val:p.budgetDue||'',readOnly:true},
+    {key:'budgetDue',label:'Budget Due Date',val:fmtDate(p.budgetDue)||'',readOnly:true},
     {key:'originalApprovalDate',label:'Original Approval Date',val:p.originalApprovalDate||'—',readOnly:true},
     {key:'_mostRecent',label:'Most Recent Approval',val:mostRecentApproval,readOnly:true},
     {key:'burden',label:'Burden %',val:p.burden||''},
@@ -1847,6 +1847,14 @@ function hideLoading(){
   if(window._loadTimer2)clearTimeout(window._loadTimer2);
 }
 function esc(s){if(!s)return'';return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+// "2026-10-15" → "Oct. 15, 2026" (May keeps no period). Non-dates pass through untouched.
+function fmtDate(s){
+  if(!s)return s;
+  const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(String(s).trim());
+  if(!m)return s;
+  const months=['Jan.','Feb.','Mar.','Apr.','May','Jun.','Jul.','Aug.','Sep.','Oct.','Nov.','Dec.'];
+  return `${months[Number(m[2])-1]} ${Number(m[3])}, ${m[1]}`;
+}
 function toast(msg,type='success'){const c=document.getElementById('toast-container');const t=document.createElement('div');t.className=`toast ${type==='error'?'error':type==='warning'?'warning':''}`;t.innerHTML=`<span>${type==='success'?'✓':'⚠'}</span> ${msg}`;c.appendChild(t);setTimeout(()=>t.remove(),4000);}
 document.querySelectorAll('.modal-overlay').forEach(o=>{o.addEventListener('click',e=>{if(e.target===o){if(o.id==='occ-form-modal'){closeOccForm();}else{o.classList.remove('open');}}});});
 
