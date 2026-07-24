@@ -724,13 +724,16 @@ async function syncFromTracker(write){
   }
   // Lookups: normalized name / former name / PMS code → tracker record.
   const norm=s=>String(s||'').trim().toLowerCase();
+  // Sold-but-retained sites get a "dispo retained" suffix (any punctuation) appended to
+  // the 2027 title. Strip it for matching so they still pull tracker data.
+  const nameKey=s=>norm(String(s||'').replace(/[\s_\-]*dispo[\s_\-]*retained.*$/i,''));
   const byName={},byCode={};
   items.forEach(it=>{
     const col=id=>it.column_values.find(c=>c.id===id)?.text||'';
     const rec={due:col(TRACKER_COLS.due),rvp:col(TRACKER_COLS.rvp),dispo:col(TRACKER_COLS.completion)==='Dispo'};
-    if(it.name)byName[norm(it.name)]=rec;
+    if(it.name)byName[nameKey(it.name)]=rec;
     const fmr=col(TRACKER_COLS.formerName);
-    if(fmr)byName[norm(fmr)]=rec;
+    if(fmr)byName[nameKey(fmr)]=rec;
     const code=col(TRACKER_COLS.code);
     if(code)byCode[norm(code)]=rec;
   });
@@ -738,7 +741,7 @@ async function syncFromTracker(write){
   let updated=0,disposed=0;
   for(const p of allProperties){
     if(MONDAY_BOARD!==board)return; // year switched mid-sync — stop before writing to the wrong board
-    const rec=byName[norm(p.name)]||byName[norm(p.formerName)]||byCode[norm(p.code)];
+    const rec=byName[nameKey(p.name)]||byName[nameKey(p.formerName)]||byCode[norm(p.code)];
     if(!rec)continue;
     try{
       if(rec.due&&rec.due!==p.budgetDue){
