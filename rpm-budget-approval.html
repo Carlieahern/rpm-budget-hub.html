@@ -65,6 +65,12 @@ table{width:100%;border-collapse:collapse;font-size:14px;}
 thead{background:var(--surface);position:sticky;top:0;z-index:10;}
 th{padding:10px 12px;text-align:left;font-size:12px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border);white-space:nowrap;cursor:pointer;user-select:none;}
 th:hover{color:var(--text2);}
+.col-info{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;margin-left:5px;border-radius:50%;background:var(--surface3);color:var(--text2);font-size:9px;font-weight:700;font-style:normal;cursor:help;position:relative;vertical-align:middle;}
+.col-info:hover{background:var(--copper);color:#fff;}
+.col-tip{display:none;position:absolute;top:calc(100% + 8px);left:0;background:var(--juniper);color:#fff;padding:9px 11px;border-radius:8px;font-size:12px;font-weight:400;font-style:normal;line-height:1.55;letter-spacing:normal;text-transform:none;white-space:normal;width:max-content;max-width:300px;z-index:300;box-shadow:0 6px 20px rgba(0,0,0,.22);text-align:left;pointer-events:none;}
+.col-tip.right{left:auto;right:0;}
+.col-tip strong{font-weight:600;color:#f0d9c2;}
+.col-info:hover .col-tip{display:block;}
 td{padding:9px 12px;border-bottom:1px solid var(--border);color:var(--text);vertical-align:middle;}
 tr:hover td{background:rgba(0,0,0,.02);}
 tr.selected td{background:rgba(184,115,51,.05);}
@@ -252,12 +258,12 @@ tr.selected td{background:rgba(184,115,51,.05);}
               <th onclick="sortBy('code')">Code ↕</th>
               <th onclick="sortBy('owner')">Owner ↕</th>
               <th onclick="sortBy('rvp')">RVP ↕</th>
-              <th onclick="sortBy('approvalStatus')">Status ↕</th>
-              <th id="budgetdue-th" class="col-budgetdue" onclick="sortBy('budgetDue')">Budget Due Date ↕</th>
-              <th onclick="sortBy('originalApprovalDate')">Orig. Approval ↕</th>
-              <th onclick="sortBy('lastReopenDate')">Last Reopened ↕</th>
-              <th onclick="sortBy('reopenCount')">Reopens ↕</th>
-              <th onclick="sortBy('approvalDate')">Curr. Approval ↕</th>
+              <th onclick="sortBy('approvalStatus')">Status ↕<span class="col-info" onclick="event.stopPropagation()">i<span class="col-tip"><strong>Approved</strong> — Finalized in RealPage Budgeting and imported into the PMS<br><strong>In Progress</strong> — No documented activity regarding budget approval; assumed to still be in writing stage<br><strong>Reopened</strong> — Budget reopened by Admin team with written approval from the client<br><strong>Uploaded</strong> — Uploaded to the PMS, does not have a documented approval<br><strong>Upload Issues</strong> — Issues experienced by the Budget Admin team at import; requires review from the ops team<br><strong>Removed</strong> — Was previously in Uploaded status but requested to be removed by the ops team</span></span></th>
+              <th id="budgetdue-th" class="col-budgetdue" onclick="sortBy('budgetDue')">Budget Due Date ↕<span class="col-info" onclick="event.stopPropagation()">i<span class="col-tip">Date entered into the Budget Due Date Tracker.</span></span></th>
+              <th onclick="sortBy('originalApprovalDate')">Orig. Approval ↕<span class="col-info" onclick="event.stopPropagation()">i<span class="col-tip">The date the very first approval was received and the budgeted occupancy updated. Meets PMA requirement.</span></span></th>
+              <th onclick="sortBy('lastReopenDate')">Last Reopened ↕<span class="col-info" onclick="event.stopPropagation()">i<span class="col-tip right">The date the most recent request was received and approved to be reopened and completed by the admin team.</span></span></th>
+              <th onclick="sortBy('reopenCount')">Reopens ↕<span class="col-info" onclick="event.stopPropagation()">i<span class="col-tip right">Running count of each time the budget was requested to be reopened.</span></span></th>
+              <th onclick="sortBy('approvalDate')">Curr. Approval ↕<span class="col-info" onclick="event.stopPropagation()">i<span class="col-tip right">The most recent approval received from the client. If it differs from the original approval date, this means it was approved after previously being reopened on request.</span></span></th>
               <th id="actions-th">Actions</th>
             </tr></thead>
             <tbody id="table-body"></tbody>
