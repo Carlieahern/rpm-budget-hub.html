@@ -910,7 +910,16 @@ async function launchTracker() {
     initActivitySession();
     // Auto-refresh from Monday every hour
     if(window._autoRefreshTimer) clearInterval(window._autoRefreshTimer);
-    window._autoRefreshTimer = setInterval(async () => { await loadItems(); }, 60 * 60 * 1000);
+    // Silent background refresh every 2 minutes. Skipped while a modal is open or the
+    // user is typing in a field so it never interrupts what someone is doing.
+    window._autoRefreshTimer = setInterval(async () => {
+      const modalOpen = document.querySelector('.modal-overlay.open, #admin-login-modal.open');
+      const el = document.activeElement;
+      const typing = el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT');
+      const bulkActive = typeof selectedIds !== 'undefined' && selectedIds && selectedIds.size > 0;
+      if (modalOpen || typing || bulkActive) return;
+      await loadItems(true);
+    }, 2 * 60 * 1000);
   } catch(e) {
     hideLoading();
     showToast('Connection failed: ' + e.message, 'error');
@@ -1111,11 +1120,12 @@ function updateYearButtons() {
 // ============================================================
 // LOAD ITEMS
 // ============================================================
-async function loadItems() {
-  showLoading('Loading ' + currentYear + ' properties...');
+async function loadItems(silent = false) {
+  if (!silent) showLoading('Loading ' + currentYear + ' properties...');
   try {
     const groupId = siteGroupIds[currentYear];
     if (!groupId) {
+      if (silent) return;
       allProperties = [];
       populateFilters(); filterTable(); hideLoading();
       showToast('No ' + currentYear + ' group found in Monday board', 'error');
@@ -1188,8 +1198,10 @@ async function loadItems() {
       };
     });
 
-    populateFilters(); filterTable(); hideLoading();
+    populateFilters(); filterTable();
+    if (!silent) hideLoading();
   } catch (err) {
+    if (silent) { console.warn('Background refresh failed', err); return; }
     hideLoading();
     showToast('Load failed: ' + err.message, 'error');
   }
