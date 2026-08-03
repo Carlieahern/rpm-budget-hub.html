@@ -249,6 +249,7 @@ tr.selected td{background:rgba(184,115,51,.05);}
             <option>Reopened</option>
             <option>Not Started</option>
           </select>
+          <button class="btn btn-secondary" id="dupe-btn" onclick="openDuplicatesModal()" title="Review and merge duplicate property records" style="display:none;border-color:#C0392B;color:#C0392B;">🔀 Duplicates <span id="dupe-count" style="background:#C0392B;color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;margin-left:4px;">0</span></button>
         </div>
         <div class="table-scroll">
           <table>
@@ -397,6 +398,19 @@ tr.selected td{background:rgba(184,115,51,.05);}
   </div>
 </div>
 
+<div class="modal-overlay" id="duplicates-modal">
+  <div class="modal" style="max-width:780px;">
+    <div class="modal-header">
+      <div><div class="modal-title">🔀 Duplicate Properties</div><div class="modal-subtitle">Ownership-change records detected in <span id="dupe-year"></span></div></div>
+      <button class="modal-close" onclick="closeModal('duplicates-modal')">×</button>
+    </div>
+    <div class="modal-body" id="duplicates-body"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('duplicates-modal')">Close</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="occ-help-modal">
   <div class="modal" style="max-width:560px;">
     <div class="modal-header"><div><div class="modal-title">📊 How to Find Budgeted Occupancy</div><div class="modal-subtitle">Pulling the occupancy report</div></div><button class="modal-close" onclick="closeModal('occ-help-modal')">×</button></div>
@@ -440,6 +454,7 @@ tr.selected td{background:rgba(184,115,51,.05);}
 
 <!-- Shared Hub Firebase config + occupancy store (separate collection from activity logging) -->
 <script src="firebase-config.js"></script>
+<script src="activity-log.js"></script>
 <script src="occupancy-store.js"></script>
 
 <script>
@@ -453,7 +468,6 @@ const MONDAY_API_TOKEN = 'eyJhbGciOiJIUzI1NiJ9.eyJ0aWQiOjYzODMwNTU0NywiYWFpIjoxM
 
 // ── MONDAY CONFIG ──
 const CONFIG_BOARD = '18413190457';
-const ACTIVITY_BOARD = '18407376110';
 let MONDAY_BOARD = '18413186439'; // default 2027, overwritten by loadYearConfig
 // Only the 2027 board is interactive (submits, occupancy, tracker writes). Every other
 // year board — e.g. 2026 (9442223907), built differently — is view-only for everyone,
@@ -475,18 +489,7 @@ function applyYearMode(){
 }
 let yearBoards  = {};  // { '2027': '18413186439' }
 let yearItemIds = {};  // { '2027': 'monday_item_id' } — used for deletion
-const ACTIVITY_COLS = {
-  time:        'text_mm25vhjm',
-  username:    'text_mm25nn6r',
-  department:  'text_mm25pj7p',
-  email:       'text_mm25zszm',
-  actionType:  'text_mm2544gd',
-  programName: 'text_mm25ks77',
-  details:     'text_mm25je0x'
-};
 let MONDAY_TOKEN = MONDAY_API_TOKEN;
-let activityGroupId = null;
-let activitySessionItemId = null;
 
 // ── COLUMN MAP ──
 const COL = {
@@ -701,7 +704,7 @@ async function syncMonday(showOverlay){
       dispo:col(COL.dispo),
     };
   }).filter(p=>p.dispo!=='✓'); // disposed properties stay out of the app
-  filterTable();updateStats();
+  filterTable();updateStats();updateDuplicateBadge();
   hideLoading();
   if(showOverlay)toast(`Loaded ${allProperties.length} properties`,'success');
   // Everyone pulls Budget Due dates, RVPs, and Dispo from the Due Date Tracker so the
@@ -736,7 +739,9 @@ async function syncFromTracker(write){
   const norm=s=>String(s||'').trim().toLowerCase();
   // Sold-but-retained sites get a "dispo retained" suffix (any punctuation) appended to
   // the 2027 title. Strip it for matching so they still pull tracker data.
-  const nameKey=s=>norm(String(s||'').replace(/[\s_\-]*dispo[\s_\-]*retained.*$/i,''));
+  // Uses the shared DISPO_RETAIN_RE (a strict superset of the original pattern — it also
+  // accepts "retain" and parens/brackets/pipes), so matching and dedup stay in step.
+  const nameKey=s=>norm(String(s||'').replace(DISPO_RETAIN_RE,''));
   const byName={},byCode={};
   items.forEach(it=>{
     const col=id=>it.column_values.find(c=>c.id===id)?.text||'';
@@ -846,37 +851,23 @@ async function pushStatusToMonday(itemId, columnId, appStatus){
 }
 
 // ── ACTIVITY LOG ──
+// Writes to the shared Firestore `activity_log` collection (via activity-log.js),
+// the same feed the Hub's Activity tile reads. Replaces the old Monday activity
+// board, which this app was still writing to long after the other tools moved off it.
 async function initActivitySession(){
-  try{
-    activityGroupId='group_mm39z216';
-    const today=new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
-    const qResult=await mondayQuery(`{boards(ids:${ACTIVITY_BOARD}){groups(ids:"${activityGroupId}"){items_page(limit:100){items{id name}}}}}`);
-    const items=qResult?.data?.boards?.[0]?.groups?.[0]?.items_page?.items||[];
-    const existing=items.find(it=>it.name===today);
-    if(existing){
-      activitySessionItemId=existing.id;
-    } else {
-      const mResult=await mondayQuery(`mutation{create_item(board_id:${ACTIVITY_BOARD},group_id:"${activityGroupId}",item_name:${JSON.stringify(today)}){id}}`);
-      activitySessionItemId=mResult?.data?.create_item?.id;
-    }
-    await logActivity('Login');
-  }catch(e){console.warn('Activity session init failed',e);}
+  await logActivity('Login');
 }
 
 async function logActivity(action,details={}){
-  try{
-    if(!activitySessionItemId)return;
-    const ts=new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-    const subitemName=`${currentUser.name||'Unknown'} — ${action}${details.property?' — '+details.property:''}`;
-    const colValues={
-      [ACTIVITY_COLS.time]:ts,
-      [ACTIVITY_COLS.department]:currentUser.position||'',
-      [ACTIVITY_COLS.email]:currentUser.email||'',
-      [ACTIVITY_COLS.actionType]:action,
-      [ACTIVITY_COLS.details]:details.property||'-'
-    };
-    await mondayQuery(`mutation{create_subitem(parent_item_id:${activitySessionItemId},item_name:${JSON.stringify(subitemName)},column_values:${JSON.stringify(JSON.stringify(colValues))}){id}}`);
-  }catch(e){console.warn('logActivity failed',e);}
+  logToFirebase({
+    name:currentUser.name||'Unknown',
+    email:currentUser.email||'',
+    role:currentUser.position||'',
+    tool:'Budget Approval',
+    action,
+    property:details.property||'',
+    description:details.description || (action + (details.property?' — '+details.property:''))
+  });
 }
 
 // ── GATE ──
@@ -1161,6 +1152,218 @@ async function confirmDispose(id){
     closeModal('detail-modal');
     filterTable();updateStats();
     toast(`${p.name} disposed`,'warning');
+  }
+}
+
+// ── DUPLICATE DETECTION & MERGE ──
+// An ownership change makes the Monday automation push a SECOND item for a property
+// we already manage, named "<property> + <some 'dispo retained' variant>". The PMS ID
+// changes on transition, so the name is the only reliable link. Matching is deliberately
+// conservative — it strips only the dispo-retain marker and punctuation, so genuinely
+// different sites ("Parkview" vs "Parkview II") never collapse together.
+const DISPO_RETAIN_RE=/[\s\-–—_(),.|\[\]]*dispo[\s\-–—_'’]*retain(ed)?\b.*$/i;
+function canonicalKey(name){return String(name||'').toLowerCase().replace(DISPO_RETAIN_RE,'').replace(/[^a-z0-9]+/g,'');}
+function hasRetainMarker(name){return DISPO_RETAIN_RE.test(String(name||''));}
+
+const MERGE_FIELDS=[
+  {k:'code',label:'PMS ID / Code',col:COL.code,type:'text'},
+  {k:'owner',label:'Owner',col:COL.owner,type:'text'},
+  {k:'rvp',label:'RVP',col:COL.rvp,type:'text'},
+  {k:'state',label:'State',col:COL.state,type:'text'},
+  {k:'ame',label:'AME',col:COL.ame,type:'text'},
+  {k:'pmsSystem',label:'PMS System',col:COL.pmsSystem,type:'text'},
+  {k:'budgetingId',label:'Budgeting ID',col:COL.budgetingId,type:'text'},
+  {k:'burden',label:'Burden',col:COL.burden,type:'text'},
+  {k:'payrollDetail',label:'Payroll Detail',col:COL.payrollDetail,type:'text'},
+  {k:'pmaDate',label:'PMA Date',col:COL.pmaDate,type:'date'},
+  {k:'transitionDate',label:'Transition Date',col:COL.transitionDate,type:'date'},
+  {k:'budgetDue',label:'Budget Due Date',col:COL.budgetDueDate,type:'date'},
+  // `preserve` = approval history. The incoming transition record is typically a fresh
+  // "Not Started" item, so taking its value by default would silently downgrade an
+  // already-approved property. These default to the kept record whenever it has a value;
+  // the picker still lets you take the incoming one deliberately.
+  {k:'occVacEntryDate',label:'Occ/Vac Entry Date',col:COL.occVacEntryDate,type:'date',preserve:true},
+  {k:'originalApprovalDate',label:'Original Approval Date',col:COL.originalApprovalDate,type:'date',preserve:true},
+  {k:'approvalDate',label:'Approval Date',col:COL.approvalDate,type:'date',preserve:true},
+  {k:'lastReopenDate',label:'Last Reopen Date',col:COL.lastReopenDate,type:'date',preserve:true},
+  {k:'reopenCount',label:'# of Reopens',col:COL.reopenCount,type:'text',preserve:true},
+  {k:'approvalStatus',label:'Approval Status',col:COL.status,type:'status',preserve:true}
+];
+
+function findDuplicateGroups(){
+  const groups={};
+  allProperties.forEach(p=>{const key=canonicalKey(p.name);if(!key)return;(groups[key]=groups[key]||[]).push(p);});
+  return Object.values(groups).filter(g=>g.length>1);
+}
+function filledCount(p){return MERGE_FIELDS.reduce((n,f)=>n+(p[f.k]?1:0),0);}
+// Keep the record WITHOUT the dispo marker — it holds the approval history.
+function pickKeeper(group){
+  const plain=group.filter(p=>!hasRetainMarker(p.name));
+  const pool=plain.length?plain:group;
+  return pool.slice().sort((a,b)=>filledCount(b)-filledCount(a))[0];
+}
+// Every field where the two disagree. A blank on the incoming record defaults to
+// keeping what's there, so a merge can't silently erase approval history.
+function mergePairFields(keep,twin){
+  const rows=[];
+  MERGE_FIELDS.forEach(f=>{
+    if(!f.col)return;
+    const kv=String(keep[f.k]||'').trim(),tv=String(twin[f.k]||'').trim();
+    if(kv===tv)return;
+    rows.push({...f,keepVal:kv,twinVal:tv,dflt:(f.preserve&&kv)?'keep':(tv?'new':'keep')});
+  });
+  return rows;
+}
+
+let dupeSwaps={};
+function pairKeyOf(a,b){return [a.id,b.id].sort().join('|');}
+function toggleDupeSwap(pk){dupeSwaps[pk]=!dupeSwaps[pk];openDuplicatesModal();}
+function dupeSelectAll(pid,which){
+  document.querySelectorAll('input[type=radio][name^="sel-'+pid+'-"]').forEach(r=>{if(r.value===which)r.checked=true;});
+}
+function resolveSelections(pid,rows){
+  return rows.map(r=>{
+    const sel=document.querySelector('input[name="sel-'+pid+'-'+r.k+'"]:checked')?.value||r.dflt;
+    let value;
+    if(sel==='keep')value=r.keepVal;
+    else if(sel==='new')value=r.twinVal;
+    else value=(document.getElementById('cust-'+pid+'-'+r.k)?.value||'').trim();
+    return {...r,chosen:sel,value};
+  }).filter(r=>r.value!==r.keepVal);
+}
+
+function updateDuplicateBadge(){
+  const btn=document.getElementById('dupe-btn');if(!btn)return;
+  let n=0;findDuplicateGroups().forEach(g=>{n+=g.length-1;});
+  if(n>0){document.getElementById('dupe-count').textContent=n;btn.style.display='';}
+  else btn.style.display='none';
+}
+
+function openDuplicatesModal(){
+  const groups=findDuplicateGroups();
+  document.getElementById('dupe-year').textContent=currentYear;
+  const canMerge=isAdmin&&!yearReadOnly();
+  const note=!groups.length?'':(canMerge
+    ?'<div style="font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:16px;">These look like the same property pushed twice by the Monday automation. Merging copies the values you pick onto the record you keep, saves the duplicate\'s name into <strong>Former Property Name</strong>, and moves the duplicate to the Disposed group.</div>'
+    :'<div style="font-size:12px;color:#C0392B;line-height:1.6;margin-bottom:16px;border:1px solid #C0392B;border-radius:8px;padding:10px 12px;">Showing detected duplicates only. '+(yearReadOnly()?'The '+currentYear+' board is view-only, so merging is disabled.':'Merging is limited to admin sessions in this app.')+'</div>');
+  document.getElementById('duplicates-body').innerHTML=groups.length
+    ? note+groups.map(g=>renderDupeGroup(g,canMerge)).join('')
+    : '<div style="padding:34px;text-align:center;color:var(--text3);font-size:13px;">No duplicate property records found in '+currentYear+'.</div>';
+  document.getElementById('duplicates-modal').classList.add('open');
+}
+
+function renderDupeGroup(g,canMerge){
+  const base=pickKeeper(g),others=g.filter(p=>p.id!==base.id);
+  const cell='padding:5px 9px;border-bottom:1px solid var(--border);vertical-align:middle;';
+  return others.map(other=>{
+    const pk=pairKeyOf(base,other);
+    const keep=dupeSwaps[pk]?other:base, twin=dupeSwaps[pk]?base:other;
+    const rows=mergePairFields(keep,twin), pid=keep.id+'-'+twin.id;
+    return `<div style="border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px;">
+      <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:12px;">
+        <div style="flex:1;min-width:210px;">
+          <div style="font-size:10px;font-weight:700;color:#1f9d55;letter-spacing:.5px;margin-bottom:3px;">KEEP THIS RECORD</div>
+          <div style="font-size:13px;font-weight:600;">${esc(keep.name)}</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px;">Code: ${esc(keep.code)||'—'} · id ${keep.id}</div>
+        </div>
+        <div style="flex:1;min-width:210px;">
+          <div style="font-size:10px;font-weight:700;color:#C0392B;letter-spacing:.5px;margin-bottom:3px;">DISPOSE THIS ONE</div>
+          <div style="font-size:13px;font-weight:600;">${esc(twin.name)}</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px;">Code: ${esc(twin.code)||'—'} · id ${twin.id}</div>
+        </div>
+      </div>
+      ${rows.length?`
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:7px;">
+        <span style="font-size:11px;color:var(--text2);">${rows.length} field${rows.length===1?'':'s'} differ — pick a value for each:</span>
+        ${canMerge?`<span style="margin-left:auto;display:flex;gap:6px;">
+          <button class="btn btn-secondary" style="padding:3px 9px;font-size:11px;" onclick="dupeSelectAll('${pid}','keep')">Use all Kept</button>
+          <button class="btn btn-secondary" style="padding:3px 9px;font-size:11px;" onclick="dupeSelectAll('${pid}','new')">Use all Incoming</button>
+        </span>`:''}
+      </div>
+      <div style="max-height:260px;overflow:auto;border:1px solid var(--border);border-radius:8px;">
+        <table style="width:100%;font-size:11px;border-collapse:collapse;">
+          <thead><tr>
+            <th style="${cell}text-align:left;font-size:10px;color:var(--text3);">FIELD</th>
+            <th style="${cell}text-align:left;font-size:10px;color:#1f9d55;">KEPT RECORD</th>
+            <th style="${cell}text-align:left;font-size:10px;color:#C0392B;">INCOMING</th>
+            ${canMerge?`<th style="${cell}text-align:left;font-size:10px;color:var(--text3);">CUSTOM</th>`:''}
+          </tr></thead>
+          <tbody>${rows.map(r=>{
+            const nm='sel-'+pid+'-'+r.k, ci='cust-'+pid+'-'+r.k;
+            const dis=canMerge?'':' disabled';
+            return `<tr>
+            <td style="${cell}white-space:nowrap;font-weight:600;">${esc(r.label)}</td>
+            <td style="${cell}"><label style="display:flex;gap:5px;align-items:center;cursor:pointer;">
+              <input type="radio" name="${nm}" value="keep" ${r.dflt==='keep'?'checked':''}${dis}>
+              <span style="${r.keepVal?'':'color:var(--text3);font-style:italic;'}">${esc(r.keepVal)||'(blank)'}</span></label></td>
+            <td style="${cell}"><label style="display:flex;gap:5px;align-items:center;cursor:pointer;">
+              <input type="radio" name="${nm}" value="new" ${r.dflt==='new'?'checked':''}${dis}>
+              <span style="${r.twinVal?'font-weight:600;':'color:var(--text3);font-style:italic;'}">${esc(r.twinVal)||'(blank)'}</span></label></td>
+            ${canMerge?`<td style="${cell}"><label style="display:flex;gap:5px;align-items:center;">
+              <input type="radio" name="${nm}" value="custom">
+              <input type="${r.type==='date'?'date':'text'}" id="${ci}" placeholder="type a value"
+                style="width:100%;max-width:150px;font-size:11px;padding:3px 6px;border:1px solid var(--border);border-radius:5px;"
+                oninput="document.querySelector('input[name=\\'${nm}\\'][value=custom]').checked=true;"></label></td>`:''}
+          </tr>`;}).join('')}</tbody>
+        </table>
+      </div>`:'<div style="font-size:11px;color:var(--text3);">Both records hold identical values — only the duplicate will be disposed.</div>'}
+      ${canMerge?`<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">
+        <button class="btn btn-copper" onclick="executeMerge('${keep.id}','${twin.id}')">Merge &amp; Dispose Duplicate</button>
+        <button class="btn btn-secondary" onclick="toggleDupeSwap('${pk}')" title="Keep the other record instead">⇄ Swap which one is kept</button>
+      </div>`:''}
+    </div>`;
+  }).join('');
+}
+
+async function applyMergeValue(itemId,f,value){
+  if(f.type==='date'){
+    if(value)await pushDateToMonday(itemId,f.col,value);
+    else await mondayMutation(`mutation{change_column_value(board_id:${MONDAY_BOARD},item_id:${itemId},column_id:"${f.col}",value:${JSON.stringify(JSON.stringify({}))}){id}}`);
+  } else if(f.type==='status'){
+    await pushStatusToMonday(itemId,f.col,value);
+  } else {
+    await pushToMonday(itemId,f.col,value);
+  }
+}
+
+async function executeMerge(keepId,twinId){
+  if(!isAdmin||yearReadOnly()){toast('Merging is not available for this year or role','error');return;}
+  const keep=allProperties.find(p=>p.id===keepId), twin=allProperties.find(p=>p.id===twinId);
+  if(!keep||!twin){toast('Could not find both records — sync and try again','error');return;}
+  const rows=mergePairFields(keep,twin);
+  const changes=resolveSelections(keepId+'-'+twinId,rows);
+  const msg='MERGE DUPLICATE — ARE YOU SURE?\n\n'+
+    'KEEP:     '+keep.name+'   (id '+keep.id+')\n'+
+    'DISPOSE:  '+twin.name+'   (id '+twin.id+')\n\n'+
+    (changes.length
+      ? changes.length+' field(s) on the kept record will be OVERWRITTEN:\n\n'+
+        changes.map(c=>'  • '+c.label+':  "'+(c.keepVal||'(blank)')+'"   →   "'+(c.value||'(blank)')+'"'+(c.chosen==='custom'?'   [custom]':'')).join('\n')+
+        '\n\nThe old values shown above will be permanently replaced and CANNOT be recovered from this app.'
+      : 'No field values will change.')+
+    '\n\n"'+twin.name+'" will be moved to the Disposed group in Monday and removed from this app.\n'+
+    'This action will be logged to Activity under your name.\n\nContinue?';
+  if(!confirm(msg))return;
+
+  showLoading('Merging duplicate...');
+  try{
+    for(const c of changes) await applyMergeValue(keep.id,c,c.value);
+    if(COL.formerName&&twin.name) await pushToMonday(keep.id,COL.formerName,twin.name);
+    await pushStatusToMonday(twin.id,COL.dispo,'Disposed');
+    logActivity('Duplicate Merged',{
+      property:keep.name,
+      description:'Merged duplicate "'+twin.name+'" (id '+twin.id+', disposed) into "'+keep.name+'" (id '+keep.id+'). '+
+        changes.length+' field(s) updated'+(changes.length?': '+changes.map(c=>c.label+' "'+(c.keepVal||'blank')+'"→"'+(c.value||'blank')+'"'+(c.chosen==='custom'?' (custom)':'')).join('; '):'')+'.'
+    });
+    changes.forEach(c=>{keep[c.k]=c.value;});
+    keep.formerName=twin.name;
+    allProperties=allProperties.filter(p=>p.id!==twin.id);
+    hideLoading();
+    toast('Merged — "'+twin.name+'" disposed','success');
+    filterTable();updateStats();updateDuplicateBadge();
+    openDuplicatesModal();
+  }catch(e){
+    hideLoading();
+    toast('Merge failed: '+e.message,'error');
   }
 }
 
