@@ -250,6 +250,7 @@ tr.selected td{background:rgba(184,115,51,.05);}
             <option>Not Started</option>
           </select>
           <button class="btn btn-secondary" id="dupe-btn" onclick="openDuplicatesModal()" title="Review and merge duplicate property records" style="display:none;border-color:#C0392B;color:#C0392B;">🔀 Duplicates <span id="dupe-count" style="background:#C0392B;color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;margin-left:4px;">0</span></button>
+          <button class="btn btn-secondary" id="clean-names-btn" onclick="openCleanNamesModal()" title="Remove the 'dispo retained' suffix from property names in Monday" style="display:none;border-color:var(--juniper);color:var(--juniper);">🧹 Clean Names <span id="clean-names-count" style="background:var(--juniper);color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;margin-left:4px;">0</span></button>
         </div>
         <div class="table-scroll">
           <table>
@@ -394,6 +395,20 @@ tr.selected td{background:rgba(184,115,51,.05);}
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal('settings-modal')">Cancel</button>
       <button class="btn btn-copper" onclick="saveSettings()">Save Token</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="clean-names-modal">
+  <div class="modal" style="max-width:720px;">
+    <div class="modal-header">
+      <div><div class="modal-title">🧹 Clean Property Names</div><div class="modal-subtitle">Remove the "dispo retained" suffix in Monday</div></div>
+      <button class="modal-close" onclick="closeModal('clean-names-modal')">×</button>
+    </div>
+    <div class="modal-body" id="clean-names-body"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('clean-names-modal')">Cancel</button>
+      <button class="btn btn-copper" id="clean-names-go" onclick="runCleanNames()">Rename in Monday</button>
     </div>
   </div>
 </div>
@@ -704,7 +719,7 @@ async function syncMonday(showOverlay){
       dispo:col(COL.dispo),
     };
   }).filter(p=>p.dispo!=='✓'); // disposed properties stay out of the app
-  filterTable();updateStats();updateDuplicateBadge();
+  filterTable();updateStats();updateDuplicateBadge();updateCleanNamesBadge();
   hideLoading();
   if(showOverlay)toast(`Loaded ${allProperties.length} properties`,'success');
   // Everyone pulls Budget Due dates, RVPs, and Dispo from the Due Date Tracker so the
@@ -1369,6 +1384,91 @@ async function executeMerge(keepId,twinId){
     hideLoading();
     toast('Merge failed: '+e.message,'error');
   }
+}
+
+// ── CLEAN NAMES (rename in Monday) ──
+// Strips the "dispo retained" suffix from the real Monday item names. Only safe when
+// the stripped name is unique — a property that still has an unmerged twin would end
+// up with two identically-named items, and renaming destroys the only marker showing
+// which record arrived with the ownership change. Those are held back.
+function findRenamableItems(){
+  const groups={};
+  allProperties.forEach(p=>{const k=canonicalKey(p.name);if(!k)return;(groups[k]=groups[k]||[]).push(p);});
+  const safe=[],blocked=[];
+  allProperties.forEach(p=>{
+    if(!hasRetainMarker(p.name))return;
+    const to=displayName(p.name);
+    if(!to||to===p.name)return;
+    ((groups[canonicalKey(p.name)]||[]).length>1?blocked:safe).push({p,to});
+  });
+  return {safe,blocked};
+}
+
+function updateCleanNamesBadge(){
+  const btn=document.getElementById('clean-names-btn');if(!btn)return;
+  const {safe,blocked}=findRenamableItems();
+  const n=safe.length+blocked.length;
+  if(n>0){document.getElementById('clean-names-count').textContent=n;btn.style.display='';}
+  else btn.style.display='none';
+}
+
+function openCleanNamesModal(){
+  const {safe,blocked}=findRenamableItems();
+  const canWrite=isAdmin&&!yearReadOnly();
+  const go=document.getElementById('clean-names-go');
+  go.style.display=(safe.length&&canWrite)?'':'none';
+  go.textContent=safe.length?`Rename ${safe.length} in Monday`:'Rename in Monday';
+  const row=(r,dim)=>`<tr>
+    <td style="padding:6px 10px;border-bottom:1px solid var(--border);font-size:12px;${dim?'color:var(--text3);':''}">${esc(r.p.name)}</td>
+    <td style="padding:6px 10px;border-bottom:1px solid var(--border);font-size:12px;color:var(--text3);">→</td>
+    <td style="padding:6px 10px;border-bottom:1px solid var(--border);font-size:12px;font-weight:600;${dim?'color:var(--text3);':'color:#1f9d55;'}">${esc(r.to)}</td></tr>`;
+  let html='';
+  if(!safe.length&&!blocked.length){
+    html='<div style="padding:34px;text-align:center;color:var(--text3);font-size:13px;">No property names need cleaning up.</div>';
+  } else {
+    if(!canWrite){
+      html+=`<div style="font-size:12px;color:#C0392B;line-height:1.6;margin-bottom:14px;border:1px solid #C0392B;border-radius:8px;padding:10px 12px;">Showing what would change. ${yearReadOnly()?'The '+currentYear+' board is view-only, so renaming is disabled.':'Renaming is limited to admin sessions in this app.'}</div>`;
+    }
+    if(safe.length){
+      html+=`<div style="font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:10px;">These <strong>${safe.length}</strong> item${safe.length===1?'':'s'} will be renamed on the Monday board. This changes the real item name — it does not touch any other column.</div>
+      <div style="max-height:260px;overflow:auto;border:1px solid var(--border);border-radius:8px;margin-bottom:16px;"><table style="width:100%;border-collapse:collapse;">${safe.map(r=>row(r,false)).join('')}</table></div>`;
+    }
+    if(blocked.length){
+      html+=`<div style="border:1px solid #C0392B;border-radius:8px;padding:12px 14px;">
+        <div style="font-size:12px;font-weight:700;color:#C0392B;margin-bottom:6px;">⚠ ${blocked.length} held back — merge these first</div>
+        <div style="font-size:11px;color:var(--text2);line-height:1.6;margin-bottom:10px;">Each of these still has a matching record on the board. Renaming now would leave two items with the same name and remove the only clue showing which one arrived with the ownership change. Merge them under <strong>🔀 Duplicates</strong> first, then come back.</div>
+        <div style="max-height:170px;overflow:auto;border:1px solid var(--border);border-radius:8px;"><table style="width:100%;border-collapse:collapse;">${blocked.map(r=>row(r,true)).join('')}</table></div></div>`;
+    }
+  }
+  document.getElementById('clean-names-body').innerHTML=html;
+  document.getElementById('clean-names-modal').classList.add('open');
+}
+
+async function runCleanNames(){
+  if(!isAdmin||yearReadOnly()){toast('Renaming is not available for this year or role','error');return;}
+  const {safe}=findRenamableItems();
+  if(!safe.length)return;
+  const preview=safe.slice(0,12).map(r=>'  • '+r.p.name+'\n      → '+r.to).join('\n');
+  const msg='RENAME '+safe.length+' PROPERT'+(safe.length===1?'Y':'IES')+' IN MONDAY — ARE YOU SURE?\n\n'+
+    preview+(safe.length>12?'\n  …and '+(safe.length-12)+' more':'')+
+    '\n\nThis edits the item names on the Monday board itself. No other column is touched.\n'+
+    'There is no undo from this app — the old names would have to be typed back in by hand.\n\n'+
+    'This will be logged to Activity under your name.\n\nContinue?';
+  if(!confirm(msg))return;
+  closeModal('clean-names-modal');
+  showLoading('Renaming 0 of '+safe.length+'...');
+  let done=0,failed=0;
+  for(const r of safe){
+    try{ await pushToMonday(r.p.id,'name',r.to); done++; showLoading('Renaming '+done+' of '+safe.length+'...'); }
+    catch(e){ failed++; console.warn('rename failed',r.p.name,e); }
+  }
+  logActivity('Property Names Cleaned',{
+    property:safe.map(r=>r.to).slice(0,5).join(', ')+(safe.length>5?` +${safe.length-5} more`:''),
+    description:`Stripped the "dispo retained" suffix from ${done} Monday item name(s)`+(failed?`, ${failed} failed`:'')+': '+
+      safe.slice(0,10).map(r=>`"${r.p.name}" → "${r.to}"`).join('; ')+(safe.length>10?` +${safe.length-10} more`:'')+'.'
+  });
+  await syncMonday(false);
+  toast(`Renamed ${done} propert${done===1?'y':'ies'}`+(failed?`, ${failed} failed`:''),failed?'error':'success');
 }
 
 // ── SUBMIT FLOW ──
