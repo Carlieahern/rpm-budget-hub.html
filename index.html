@@ -731,7 +731,7 @@ function checkDuplicateCode(){
 
   if(match){
     msg.style.display = 'block';
-    msg.innerHTML = `⚠️ We found another property with that code: <strong>${esc(match.name)}</strong>. <a href="#" style="color:var(--copper);font-weight:600;text-decoration:underline;" onclick="closeModal('property-modal');openEditModal('${match.id}');return false;">View & Edit →</a>`;
+    msg.innerHTML = `⚠️ We found another property with that code: <strong>${esc(displayName(match.name))}</strong>. <a href="#" style="color:var(--copper);font-weight:600;text-decoration:underline;" onclick="closeModal('property-modal');openEditModal('${match.id}');return false;">View & Edit →</a>`;
   } else {
     msg.style.display = 'none';
   }
@@ -1413,6 +1413,16 @@ function canonicalKey(name){
 }
 function hasRetainMarker(name){ return DISPO_RETAIN_RE.test(String(name||'')); }
 
+// DISPLAY ONLY — hides the "dispo retained" suffix the Monday automation appends,
+// which can't be cleaned up on the board without editing every item by hand.
+// Never use this for anything that writes back to Monday (the edit form's name
+// field, mutations) or for matching/audit trails — those need the true name, or
+// saving a property would silently rename the Monday item.
+function displayName(n){
+  const s = String(n||'').replace(DISPO_RETAIN_RE,'').trim();
+  return s || String(n||'');
+}
+
 // Mirrors the type conventions used by saveProperty() — dates send {date:v}, everything else plain text.
 const MERGE_FIELDS = [
   {k:'code',label:'Property Code'},{k:'owner',label:'Owner'},
@@ -1791,11 +1801,11 @@ function renderTable() {
     return `<tr class="${sel?'selected':''}" data-id="${p.id}">
       <td><input type="checkbox" ${sel?'checked':''} onchange="toggleSelect('${p.id}',this)"></td>
       <td>
-        <div class="cell-property" title="${esc(p.name)}">${esc(p.name)||'—'}</div>
+        <div class="cell-property" title="${esc(p.name)}">${esc(displayName(p.name))||'—'}</div>
         <div class="date-tooltip-wrap" style="margin-top:3px;">
           <button class="eye-btn" title="View date details"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
           <div class="date-tooltip">
-            <div class="date-tooltip-title">📅 ${esc(p.name)}</div>
+            <div class="date-tooltip-title">📅 ${esc(displayName(p.name))}</div>
             <div class="date-tooltip-row"><span class="date-tooltip-label">Budget Due to Client</span><span class="date-tooltip-val ${!p.budgetDue?'empty':''}">${fmtDateDisplay(p.budgetDue)||'—'}</span></div>
             <div class="date-tooltip-row"><span class="date-tooltip-label">Forecast Target</span><span class="date-tooltip-val ${!p.forecastTarget?'empty':''}">${fmtDateDisplay(p.forecastTarget)||'—'}</span></div>
             <div class="date-tooltip-row"><span class="date-tooltip-label">Forecast Completed</span><span class="date-tooltip-val ${!p.forecastCompleted?'empty':''}">${fmtDateDisplay(p.forecastCompleted)||'—'}</span></div>
@@ -1899,7 +1909,7 @@ async function openEditModal(id){
     }catch(e){ console.log('Status update failed:', e.message); }
   }
   document.getElementById('modal-title').textContent='Edit Property';
-  document.getElementById('modal-subtitle').textContent=p.name||'[]';
+  document.getElementById('modal-subtitle').textContent=displayName(p.name)||'[]';
   document.getElementById('edit-id').value=id;
   const s=(elId,val)=>{const el=document.getElementById(elId);if(el&&val)el.value=val;};
   s('f-name',p.name);s('f-code',p.code);s('f-owner',p.owner);s('f-pma',fmtDateInput(p.pmaDate));
@@ -2031,7 +2041,7 @@ function openDispoModal(id, name){
   const pending = isDispositioning(p);
   dispoTarget = {id, name, pending};
   document.getElementById('dispo-modal-title').textContent = pending ? 'Complete or Edit Dispo' : 'Dispose Property';
-  document.getElementById('dispo-modal-name').textContent = name;
+  document.getElementById('dispo-modal-name').textContent = displayName(name);
   document.getElementById('dispo-date-input').value = new Date().toISOString().slice(0,10);
   document.getElementById('dispo-cancel-btn').style.display = pending ? '' : 'none';
   document.getElementById('dispo-modal').classList.add('open');
@@ -2156,7 +2166,7 @@ function openBulkEdit(){
     const row = document.createElement('div');
     row.style.cssText = 'display:grid;grid-template-columns:1fr 160px 100px;gap:10px;align-items:center;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;';
     row.innerHTML = `
-      <div style="font-size:13px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${esc(p.name)}">${esc(p.name)}</div>
+      <div style="font-size:13px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${esc(p.name)}">${esc(displayName(p.name))}</div>
       <div>
         <div style="font-size:10px;color:var(--text3);margin-bottom:3px;">Budget Due per PMA</div>
         <input type="date" class="form-input" style="font-size:12px;padding:5px 8px;background:white;"
@@ -2412,7 +2422,7 @@ function openBulkClearDates(){
   if(!selectedIds.size) return;
   const names = [...selectedIds].map(id => {
     const p = allProperties.find(x => x.id === id);
-    return p ? p.name : id;
+    return p ? displayName(p.name) : id;
   });
   const list = names.map(n => `• ${n}`).join('<br>');
   document.getElementById('bulk-clear-dates-sub').innerHTML =

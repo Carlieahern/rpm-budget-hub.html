@@ -977,7 +977,7 @@ function renderTable(){
     const hasReopen=p.reopenHistory&&p.reopenHistory.length>0||Number(p.reopenCount)>0;
     return `<tr class="${sel?'selected':''}">
       ${canAct?`<td><input type="checkbox" ${sel?'checked':''} onchange="toggleRowSelect('${p.id}',this)" style="accent-color:var(--copper);width:15px;height:15px;cursor:pointer;"></td>`:''}
-      <td><div class="cell-name" onclick="openDetailModal('${p.id}')">${esc(p.name)}</div>${hasReopen?`<div style="font-size:10px;color:var(--red);margin-top:2px;">🔄 ${p.reopenCount||p.reopenHistory.length} reopen${(p.reopenCount||p.reopenHistory.length)>1?'s':''}</div>`:''}</td>
+      <td><div class="cell-name" onclick="openDetailModal('${p.id}')" title="${esc(p.name)}">${esc(displayName(p.name))}</div>${hasReopen?`<div style="font-size:10px;color:var(--red);margin-top:2px;">🔄 ${p.reopenCount||p.reopenHistory.length} reopen${(p.reopenCount||p.reopenHistory.length)>1?'s':''}</div>`:''}</td>
       <td><span class="cell-code">${esc(p.code)||'—'}</span></td>
       <td style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(p.owner)||'—'}</td>
       <td>${esc(p.rvp)||'—'}</td>
@@ -1033,7 +1033,7 @@ function submitSelectedProperties(){if(!selectedIds.size){toast('Select at least
 // ── DETAIL MODAL ──
 function openDetailModal(id){
   const p=allProperties.find(x=>x.id===id);if(!p)return;
-  document.getElementById('detail-modal-title').textContent=p.name;
+  document.getElementById('detail-modal-title').textContent=displayName(p.name);
   document.getElementById('detail-modal-sub').textContent=p.code+' · '+p.owner;
   const tickets=ticketQueue.filter(t=>t.propId===id);
   const reopenCount=Number(p.reopenCount)||p.reopenHistory.length||0;
@@ -1145,13 +1145,13 @@ async function adminEditProp(propId,key,val){
 
 async function confirmDispose(id){
   const p=allProperties.find(x=>x.id===id);if(!p)return;
-  if(confirm(`Are you sure you want to dispose this property?\n\n"${p.name}" will be moved to the Disposed group in Monday and removed from this app.\n\nThis cannot be undone.`)){
+  if(confirm(`Are you sure you want to dispose this property?\n\n"${displayName(p.name)}" will be moved to the Disposed group in Monday and removed from this app.\n\nThis cannot be undone.`)){
     logActivity('Property Disposed',{property:p.name});
     await pushStatusToMonday(id,COL.dispo,'Disposed');
     allProperties=allProperties.filter(x=>x.id!==id);
     closeModal('detail-modal');
     filterTable();updateStats();
-    toast(`${p.name} disposed`,'warning');
+    toast(`${displayName(p.name)} disposed`,'warning');
   }
 }
 
@@ -1164,6 +1164,10 @@ async function confirmDispose(id){
 const DISPO_RETAIN_RE=/[\s\-–—_(),.|\[\]]*dispo[\s\-–—_'’]*retain(ed)?\b.*$/i;
 function canonicalKey(name){return String(name||'').toLowerCase().replace(DISPO_RETAIN_RE,'').replace(/[^a-z0-9]+/g,'');}
 function hasRetainMarker(name){return DISPO_RETAIN_RE.test(String(name||''));}
+// DISPLAY ONLY — hides the "dispo retained" suffix the Monday automation appends.
+// Never use for values written back to Monday, for Zendesk ticket text, or for
+// matching/audit trails — those need the true name.
+function displayName(n){const s=String(n||'').replace(DISPO_RETAIN_RE,'').trim();return s||String(n||'');}
 
 const MERGE_FIELDS=[
   {k:'code',label:'PMS ID / Code',col:COL.code,type:'text'},
@@ -1401,7 +1405,7 @@ function renderSubmitStep(){
         const ekey=id+'_'+f.key,editing=S.verifyEdits[ekey]!==undefined,val=editing?S.verifyEdits[ekey]:f.val;
         return `<div class="verify-row"><span class="verify-label">${f.label}</span>${editing?`<input class="verify-edit-input" value="${esc(val)}" oninput="S.verifyEdits['${ekey}']=this.value">`:`<span class="verify-value">${esc(val)||'—'}</span>`}<button class="btn-edit" onclick="toggleEdit('${ekey}','${esc(val)}')">${editing?'✓ Done':'✏️ Edit'}</button></div>`;
       }).join('');
-      return `<div style="margin-bottom:18px;"><div style="font-size:12px;font-weight:700;color:var(--juniper);margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid var(--border);">📍 ${esc(p.name)}</div>${rows}<div class="verify-row"><span class="verify-label">Approval Sign Off</span><span class="verify-value">${fileLink}</span></div></div>`;
+      return `<div style="margin-bottom:18px;"><div style="font-size:12px;font-weight:700;color:var(--juniper);margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid var(--border);">📍 ${esc(displayName(p.name))}</div>${rows}<div class="verify-row"><span class="verify-label">Approval Sign Off</span><span class="verify-value">${fileLink}</span></div></div>`;
     }).join('');
     body.innerHTML=progressHtml(2)+`<div class="form-section"><div class="form-section-title">Verify Property Information</div><p style="font-size:13px;color:var(--text2);margin-bottom:14px;">Confirm everything is correct. Use ✏️ Edit to fix anything inline.</p>${blocks}</div>`;
     footer.innerHTML=`<button class="btn btn-secondary" onclick="S.step=1;renderSubmitStep()">← Back</button><button class="btn btn-copper" onclick="S.step=3;renderSubmitStep()">Next: Questions →</button>`;
@@ -1466,7 +1470,7 @@ function renderSubmitStep(){
     const occSummary=months.map(([k,l])=>`<span style="font-family:var(--mono);font-size:12px;">${l}: ${S.occupancy[k]?S.occupancy[k]+'%':'—'}</span>`).join('<span style="color:var(--border);margin:0 4px;">|</span>');
     body.innerHTML=progressHtml(5)+`<div class="form-section"><div class="form-section-title">Ready to Submit</div>
       <div class="info-box success" style="margin-bottom:14px;">✓ All checks passed. Click Open Ticket to create your Zendesk ticket.</div>
-      ${props.map(p=>`<div class="verify-row"><span class="verify-label">Property</span><span class="verify-value">${esc(p.name)}</span></div>`).join('')}
+      ${props.map(p=>`<div class="verify-row"><span class="verify-label">Property</span><span class="verify-value">${esc(displayName(p.name))}</span></div>`).join('')}
       <div class="verify-row"><span class="verify-label">Submitted By</span><span class="verify-value">${esc(currentUser.name)} (${esc(currentUser.position)})</span></div>
       <div class="verify-row"><span class="verify-label">Approval Sign Off</span><span class="verify-value"><a href="#" style="color:var(--copper);" onclick="return false;">📎 ${esc(S.uploadedFile)}</a></span></div>
       <div class="verify-row"><span class="verify-label">Client COA</span><span class="verify-value">${S.useClientCOA?esc(S.coaName):'N/A'}</span></div>
@@ -1525,7 +1529,7 @@ async function openTicket(){
   logActivity('Budget Ticket Submitted',{property:props.map(p=>p.name).join(', ')});
   closeModal('submit-modal');clearSelection();
   document.getElementById('ticket-body').innerHTML=`<div class="info-box success" style="margin-bottom:14px;">✓ Status updated in Monday. Click Open in Zendesk to complete your ticket.</div>
-    ${props.map(p=>`<div class="verify-row"><span class="verify-label">Property</span><span class="verify-value">${esc(p.name)}</span></div>`).join('')}
+    ${props.map(p=>`<div class="verify-row"><span class="verify-label">Property</span><span class="verify-value">${esc(displayName(p.name))}</span></div>`).join('')}
     <div class="verify-row"><span class="verify-label">Submitted By</span><span class="verify-value">${esc(currentUser.name)}</span></div>
     <div class="verify-row"><span class="verify-label">Approval Sign Off</span><span class="verify-value">📎 ${esc(S.uploadedFile)}</span></div>`;
   filterTable();updateStats();renderQueue();
@@ -1540,7 +1544,7 @@ function buildZendeskUrl(subject,desc,propName,propCode,propState,requestType){c
 function openReopenFlow(id){
   const p=allProperties.find(x=>x.id===id);if(!p)return;
   resetRS(id);
-  document.getElementById('reopen-prop-name').textContent=p.name;
+  document.getElementById('reopen-prop-name').textContent=displayName(p.name);
   renderReopenStep();
   document.getElementById('reopen-modal').classList.add('open');
 }
@@ -1574,7 +1578,7 @@ function renderReopenStep(){
 
   } else if(RS.hasWrittenApproval===false&&RS.reopenReason==='relocating'){
     body.innerHTML=`<div class="info-box success" style="margin-bottom:14px;">✓ No written approval required. Ready to submit reopen ticket.</div>
-      <div class="verify-row"><span class="verify-label">Property</span><span class="verify-value">${esc(p.name)}</span></div>
+      <div class="verify-row"><span class="verify-label">Property</span><span class="verify-value">${esc(displayName(p.name))}</span></div>
       <div class="verify-row"><span class="verify-label">Original Approval</span><span class="verify-value">${esc(p.originalApprovalDate)||'—'}</span></div>
       <div class="verify-row"><span class="verify-label">Reason</span><span class="verify-value">Relocating income/expenses — cashflow unchanged</span></div>`;
     footer.innerHTML=`<button class="btn btn-secondary" onclick="RS.reopenReason=undefined;renderReopenStep()">← Back</button><button class="btn btn-danger" onclick="submitReopen()">🔄 Submit Reopen Ticket →</button>`;
@@ -1596,7 +1600,7 @@ function renderReopenStep(){
 
   } else if(RS.understood){
     body.innerHTML=`<div class="info-box success" style="margin-bottom:14px;">✓ Ready to submit reopen ticket.</div>
-      <div class="verify-row"><span class="verify-label">Property</span><span class="verify-value">${esc(p.name)}</span></div>
+      <div class="verify-row"><span class="verify-label">Property</span><span class="verify-value">${esc(displayName(p.name))}</span></div>
       <div class="verify-row"><span class="verify-label">Original Approval</span><span class="verify-value">${esc(p.originalApprovalDate)||'—'}</span></div>
       <div class="verify-row"><span class="verify-label">Written Approval</span><span class="verify-value"><a href="#" style="color:var(--copper);" onclick="return false;">📎 ${esc(RS.uploadedFile)}</a></span></div>`;
     footer.innerHTML=`<button class="btn btn-secondary" onclick="RS.understood=false;renderReopenStep()">← Back</button><button class="btn btn-danger" onclick="submitReopen()">🔄 Submit Reopen Ticket →</button>`;
@@ -1776,7 +1780,7 @@ async function submitReopen(){
   logActivity('Budget Reopen Submitted',{property:p.name});
   closeModal('reopen-modal');
   document.getElementById('ticket-body').innerHTML=`<div class="info-box danger" style="margin-bottom:14px;">🔄 Reopen ticket ready — click Open in Zendesk.</div>
-    <div class="verify-row"><span class="verify-label">Property</span><span class="verify-value">${esc(p.name)}</span></div>
+    <div class="verify-row"><span class="verify-label">Property</span><span class="verify-value">${esc(displayName(p.name))}</span></div>
     <div class="verify-row"><span class="verify-label">Original Approval</span><span class="verify-value">${esc(p.originalApprovalDate)||'—'}</span></div>
     <div class="verify-row"><span class="verify-label">Reopen Date</span><span class="verify-value">${today}</span></div>`;
   document.getElementById('ticket-modal').classList.add('open');
@@ -1905,7 +1909,7 @@ function renderResubmitStep(){
       <div class="form-section">
         <div class="form-section-title">Ready to Resubmit</div>
         <div class="info-box success" style="margin-bottom:14px;">✓ Ready to open your re-finalization ticket.</div>
-        <div class="verify-row"><span class="verify-label">Property</span><span class="verify-value">${esc(p.name)}</span></div>
+        <div class="verify-row"><span class="verify-label">Property</span><span class="verify-value">${esc(displayName(p.name))}</span></div>
         <div class="verify-row"><span class="verify-label">Submitted By</span><span class="verify-value">${esc(currentUser.name)} (${esc(currentUser.position)})</span></div>
         ${approvalRow}
         <div class="verify-row"><span class="verify-label">Occupancy</span><span class="verify-value" style="flex-wrap:wrap;display:flex;gap:6px;line-height:1.8;">${occSummary}</span></div>
@@ -1948,7 +1952,7 @@ async function submitResubmit(){
   logActivity('Budget Resubmitted',{property:p.name});
   closeModal('submit-modal');clearSelection();
   document.getElementById('ticket-body').innerHTML=`<div class="info-box success" style="margin-bottom:14px;">✓ Status updated. Click Open in Zendesk to complete your re-finalization ticket.</div>
-    <div class="verify-row"><span class="verify-label">Property</span><span class="verify-value">${esc(p.name)}</span></div>
+    <div class="verify-row"><span class="verify-label">Property</span><span class="verify-value">${esc(displayName(p.name))}</span></div>
     <div class="verify-row"><span class="verify-label">Submitted By</span><span class="verify-value">${esc(currentUser.name)}</span></div>
     ${TS.uploadedFile?`<div class="verify-row"><span class="verify-label">Written Approval</span><span class="verify-value">📎 ${esc(TS.uploadedFile)}</span></div>`:``}`;
   filterTable();updateStats();renderQueue();
