@@ -134,9 +134,12 @@
   .eye-btn{background:none;border:none;cursor:pointer;font-size:15px;padding:2px 4px;color:var(--text3);border-radius:4px;transition:color .15s;}
   .eye-btn:hover{color:var(--copper);}
   .date-tooltip-wrap{position:relative;display:inline-block;}
-  .date-tooltip{display:none;position:absolute;right:0;top:calc(100% + 6px);background:var(--juniper);color:#fff;border-radius:10px;padding:14px 16px;min-width:280px;z-index:999;box-shadow:0 8px 24px rgba(0,0,0,0.2);font-size:12px;line-height:1.4;}
-  .date-tooltip::before{content:'';position:absolute;top:-5px;right:10px;border-left:5px solid transparent;border-right:5px solid transparent;border-bottom:5px solid var(--juniper);}
-  .date-tooltip-wrap:hover .date-tooltip{display:block;}
+  /* position:fixed + JS placement so the popout escapes .table-wrap's overflow clipping
+     (overflow-x:auto forces the vertical axis to clip too, which cut the tooltip off
+     whenever the filtered list was shorter than the tooltip). */
+  .date-tooltip{display:none;position:fixed;background:var(--juniper);color:#fff;border-radius:10px;padding:14px 16px;min-width:280px;z-index:2000;box-shadow:0 8px 24px rgba(0,0,0,0.2);font-size:12px;line-height:1.4;}
+  .date-tooltip::before{content:'';position:absolute;top:-5px;left:14px;border-left:5px solid transparent;border-right:5px solid transparent;border-bottom:5px solid var(--juniper);}
+  .date-tooltip.flip-up::before{top:auto;bottom:-5px;border-bottom:none;border-top:5px solid var(--juniper);}
   .date-tooltip-row{display:flex;justify-content:space-between;gap:16px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.1);}
   .date-tooltip-row:last-child{border-bottom:none;}
   .date-tooltip-label{color:rgba(255,255,255,.7);white-space:nowrap;}
@@ -669,6 +672,28 @@
     <div class="year-switch-actions">
       <button class="btn btn-secondary" onclick="document.getElementById('bulk-clear-dates-modal').classList.remove('open')">Cancel</button>
       <button class="btn" style="background:#C0392B;color:white;border:none;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:600;cursor:pointer;" onclick="applyBulkClearDates()">Yes, Clear Dates</button>
+    </div>
+  </div>
+</div>
+
+<!-- DISPO DATE MODAL -->
+<div class="year-switch-overlay" id="dispo-modal">
+  <div class="year-switch-modal" style="max-width:470px;">
+    <div class="year-switch-icon">📅</div>
+    <div class="year-switch-title" id="dispo-modal-title">Dispose Property</div>
+    <div class="year-switch-sub" style="margin-bottom:4px;"><strong id="dispo-modal-name"></strong></div>
+    <div style="text-align:left;margin:14px 0 4px;">
+      <label class="form-label" style="display:block;margin-bottom:6px;">Date of Disposition</label>
+      <input type="date" class="form-input" id="dispo-date-input" style="width:100%;">
+      <div style="font-size:12px;color:var(--text2);margin-top:8px;line-height:1.6;">
+        A date <strong>today or earlier</strong> disposes the property now — it moves to the Dispo group and leaves this list.<br>
+        A <strong>future date</strong> only marks it <strong>Dispositioning</strong>. It stays in the list until you come back and complete it.
+      </div>
+    </div>
+    <div class="year-switch-actions" style="flex-wrap:wrap;">
+      <button class="btn btn-secondary" onclick="closeDispoModal()">Cancel</button>
+      <button class="btn" id="dispo-cancel-btn" style="display:none;background:transparent;border:1px solid #C0392B;color:#C0392B;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;" onclick="cancelDispo()">✕ Cancel Dispo</button>
+      <button class="btn" style="background:#C0392B;color:white;border:none;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:600;cursor:pointer;" onclick="confirmDispoDate()">Continue</button>
     </div>
   </div>
 </div>
@@ -1322,6 +1347,55 @@ async function runBackfill() {
 }
 
 // ============================================================
+// EYE POPOUT POSITIONING
+// ============================================================
+// The tooltip lives inside .table-wrap, which clips it. Rather than fight the
+// overflow, the tooltip is position:fixed and placed here on hover — so it can
+// never be cut off, and it flips above the row when there's no room below.
+let _dtTip = null;
+function hideDateTip(){
+  if(!_dtTip) return;
+  _dtTip.style.display=''; _dtTip.style.left=''; _dtTip.style.top='';
+  _dtTip.classList.remove('flip-up');
+  _dtTip = null;
+}
+function showDateTip(wrap){
+  const tip = wrap.querySelector('.date-tooltip');
+  if(!tip || tip === _dtTip) return;
+  hideDateTip();
+  _dtTip = tip;
+  tip.style.display='block';
+  tip.style.left='0px'; tip.style.top='0px';      // reset before measuring
+  const r = wrap.getBoundingClientRect();
+  const t = tip.getBoundingClientRect();
+  const pad = 8;
+  let left = r.left;
+  if(left + t.width > window.innerWidth - pad) left = window.innerWidth - t.width - pad;
+  if(left < pad) left = pad;
+  let top = r.bottom + 6;
+  if(top + t.height > window.innerHeight - pad){
+    const above = r.top - t.height - 6;
+    if(above >= pad){ top = above; tip.classList.add('flip-up'); }
+    else top = Math.max(pad, window.innerHeight - t.height - pad);
+  }
+  tip.style.left = left+'px';
+  tip.style.top  = top+'px';
+}
+document.addEventListener('mouseover', e => {
+  const wrap = e.target.closest && e.target.closest('.date-tooltip-wrap');
+  if(wrap) showDateTip(wrap);
+});
+document.addEventListener('mouseout', e => {
+  const wrap = e.target.closest && e.target.closest('.date-tooltip-wrap');
+  if(!wrap) return;
+  if(e.relatedTarget && wrap.contains(e.relatedTarget)) return;
+  hideDateTip();
+});
+// position:fixed doesn't follow a scrolling ancestor — hide instead of drifting.
+document.addEventListener('scroll', hideDateTip, true);
+window.addEventListener('resize', hideDateTip);
+
+// ============================================================
 // DUPLICATE DETECTION & MERGE
 // ============================================================
 // Ownership changes cause the Monday automation to push a second item for a
@@ -1720,7 +1794,7 @@ function renderTable() {
         <div class="cell-property" title="${esc(p.name)}">${esc(p.name)||'—'}</div>
         <div class="date-tooltip-wrap" style="margin-top:3px;">
           <button class="eye-btn" title="View date details"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
-          <div class="date-tooltip" style="right:auto;left:0;">
+          <div class="date-tooltip">
             <div class="date-tooltip-title">📅 ${esc(p.name)}</div>
             <div class="date-tooltip-row"><span class="date-tooltip-label">Budget Due to Client</span><span class="date-tooltip-val ${!p.budgetDue?'empty':''}">${fmtDateDisplay(p.budgetDue)||'—'}</span></div>
             <div class="date-tooltip-row"><span class="date-tooltip-label">Forecast Target</span><span class="date-tooltip-val ${!p.forecastTarget?'empty':''}">${fmtDateDisplay(p.forecastTarget)||'—'}</span></div>
@@ -1749,7 +1823,9 @@ function renderTable() {
       <td style="text-align:center;">${p.ticketOpened ? '<span style="color:#0f9e72;font-size:18px;" title="Ticket opened with Budget Support">✓</span>' : '<span style="color:#dde0e8;font-size:16px;">○</span>'}</td>
       <td style="display:flex;gap:6px;align-items:center;">
   <button class="btn-edit-row" onclick="openEditModal('${p.id}')">✏️ Edit</button>
-  <button class="btn-edit-row" style="background:#d63b3b;box-shadow:0 1px 4px rgba(214,59,59,0.3);" onclick="dispoProperty('${p.id}','${esc(p.name)}')">Dispo</button>
+  ${isDispositioning(p)
+    ? `<button class="btn-edit-row" style="background:#e08a1e;box-shadow:0 1px 4px rgba(224,138,30,0.3);" onclick="openDispoModal('${p.id}','${esc(p.name)}')" title="Disposition pending — complete it, move the date, or cancel">Complete/Edit Dispo</button>`
+    : `<button class="btn-edit-row" style="background:#d63b3b;box-shadow:0 1px 4px rgba(214,59,59,0.3);" onclick="openDispoModal('${p.id}','${esc(p.name)}')">Dispo</button>`}
 </td>
     </tr>`;
   }).join('');
@@ -1937,12 +2013,86 @@ async function saveProperty(isComplete=false){
     showToast('Save failed: '+err.message,'error');
   }
 }
-async function dispoProperty(id, name){
+// ── DISPO FLOW ─────────────────────────────────────────────────────────────
+// A property in the middle of an ownership transition shouldn't be disposed until
+// its actual disposition date. The date entered here is only a GATE — it decides
+// "dispose now" vs "mark Dispositioning" — so it never needs to be stored anywhere.
+// Re-opening the dialog on a pending property lets you complete it, move the date,
+// or back the whole thing out.
+let dispoTarget = null;
+
+function statusVal(label){
+  return (COL.statusType==='color'||COL.statusType==='status') ? {label} : label;
+}
+function isDispositioning(p){ return (p && p.status) === 'Dispositioning'; }
+
+function openDispoModal(id, name){
+  const p = allProperties.find(x => x.id === id);
+  const pending = isDispositioning(p);
+  dispoTarget = {id, name, pending};
+  document.getElementById('dispo-modal-title').textContent = pending ? 'Complete or Edit Dispo' : 'Dispose Property';
+  document.getElementById('dispo-modal-name').textContent = name;
+  document.getElementById('dispo-date-input').value = new Date().toISOString().slice(0,10);
+  document.getElementById('dispo-cancel-btn').style.display = pending ? '' : 'none';
+  document.getElementById('dispo-modal').classList.add('open');
+}
+function closeDispoModal(){
+  document.getElementById('dispo-modal').classList.remove('open');
+  dispoTarget = null;
+}
+
+async function confirmDispoDate(){
+  if(!dispoTarget) return;
+  const dateStr = document.getElementById('dispo-date-input').value;
+  if(!dateStr){ showToast('Enter a disposition date','error'); return; }
+  const today = new Date(); today.setHours(0,0,0,0);
+  const chosen = new Date(dateStr + 'T00:00:00');
+  const {id, name} = dispoTarget;
+  closeDispoModal();
+  if(chosen <= today) await executeDispo(id, name);
+  else await markDispositioning(id, name, dateStr);
+}
+
+// Future date — hold the property in the list, flagged Dispositioning.
+async function markDispositioning(id, name, dateStr){
+  if(!COL.status){ showToast('Status column not found in Monday board','error'); return; }
+  showLoading('Marking as Dispositioning...');
+  try{
+    await mondayQuery(`mutation { change_multiple_column_values(board_id:${BOARD_ID},item_id:${id},column_values:${JSON.stringify(JSON.stringify({[COL.status]:statusVal('Dispositioning')}))}) { id } }`);
+    showToast(`${name} marked Dispositioning — dispose on or after ${fmtDateDisplay(dateStr)||dateStr}`,'success');
+    logActivity('Marked Dispositioning',{property:name, description:`Marked "${name}" as Dispositioning with a disposition date of ${dateStr}.`});
+    await loadItems();
+  }catch(e){
+    hideLoading();
+    showToast('Could not update status: ' + e.message,'error');
+  }
+}
+
+// Back the property out of the dispo process entirely.
+async function cancelDispo(){
+  if(!dispoTarget) return;
+  const {id, name} = dispoTarget;
+  closeDispoModal();
+  if(!COL.status){ showToast('Status column not found in Monday board','error'); return; }
+  if(!confirm(`Cancel the disposition for "${name}"?\n\nIts status goes back to RPM Managed and it stays in the list as normal.`)) return;
+  showLoading('Cancelling disposition...');
+  try{
+    await mondayQuery(`mutation { change_multiple_column_values(board_id:${BOARD_ID},item_id:${id},column_values:${JSON.stringify(JSON.stringify({[COL.status]:statusVal('RPM Managed')}))}) { id } }`);
+    showToast(`Disposition cancelled for ${name}`,'success');
+    logActivity('Dispo Cancelled',{property:name, description:`Cancelled the pending disposition for "${name}" — status returned to RPM Managed.`});
+    await loadItems();
+  }catch(e){
+    hideLoading();
+    showToast('Could not cancel: ' + e.message,'error');
+  }
+}
+
+// Date has arrived — the real dispo.
+async function executeDispo(id, name){
   if(!siteGroupIds['dispo']){
     showToast('Dispo group not found in Monday board', 'error');
     return;
   }
-  if(!confirm(`Are you sure you want to dispo "${name}"?`)) return;
   showLoading('Moving to Dispo...');
   try{
     if(COL.completionStatus){
