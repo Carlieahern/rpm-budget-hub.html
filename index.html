@@ -437,6 +437,7 @@
             <option>Dispositioning</option>
           </select>
           <button class="btn btn-secondary" onclick="loadItems()" title="Sync from Monday" style="flex-shrink:0;">🔄 Refresh</button>
+          <button class="btn btn-secondary" id="dupe-btn" onclick="openDuplicatesModal()" title="Review and merge duplicate property records" style="flex-shrink:0;display:none;border-color:#C0392B;color:#C0392B;">🔀 Duplicates <span id="dupe-count" style="background:#C0392B;color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;margin-left:4px;">0</span></button>
         </div>
         <div class="bulk-bar" id="bulk-bar">
           <span><span class="bulk-count" id="bulk-count">0</span> selected</span>
@@ -668,6 +669,20 @@
     <div class="year-switch-actions">
       <button class="btn btn-secondary" onclick="document.getElementById('bulk-clear-dates-modal').classList.remove('open')">Cancel</button>
       <button class="btn" style="background:#C0392B;color:white;border:none;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:600;cursor:pointer;" onclick="applyBulkClearDates()">Yes, Clear Dates</button>
+    </div>
+  </div>
+</div>
+
+<!-- DUPLICATES MODAL -->
+<div class="modal-overlay" id="duplicates-modal">
+  <div class="modal" style="max-width:760px;">
+    <div class="modal-header modal-header-accent">
+      <div><div class="modal-title">🔀 Duplicate Properties</div><div class="modal-subtitle">Ownership-change records detected in <span id="dupe-year"></span></div></div>
+      <button class="modal-close" onclick="closeModal('duplicates-modal')">×</button>
+    </div>
+    <div class="modal-body" id="duplicates-body"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('duplicates-modal')">Close</button>
     </div>
   </div>
 </div>
@@ -1198,7 +1213,7 @@ async function loadItems(silent = false) {
       };
     });
 
-    populateFilters(); filterTable();
+    populateFilters(); filterTable(); updateDuplicateBadge();
     if (!silent) hideLoading();
   } catch (err) {
     if (silent) { console.warn('Background refresh failed', err); return; }
@@ -1303,6 +1318,250 @@ async function runBackfill() {
   } catch(err) {
     hideLoading();
     showToast('Backfill failed: ' + err.message, 'error');
+  }
+}
+
+// ============================================================
+// DUPLICATE DETECTION & MERGE
+// ============================================================
+// Ownership changes cause the Monday automation to push a second item for a
+// property we already manage — same name plus some variant of "Dispo Retain".
+// Property codes change on transition, so the name is the only reliable link.
+// Matching is deliberately conservative: it strips ONLY the dispo-retain marker
+// and punctuation, so "Parkview" and "Parkview II" stay distinct.
+// Matches the proven pattern in rpm-budget-approval.html (syncFromTracker/nameKey):
+// the marker is a suffix, so strip from it to end of string. Broadened here to also
+// accept "retain" and parens/brackets/pipes/en-dashes seen in the wild.
+const DISPO_RETAIN_RE = /[\s\-–—_(),.|\[\]]*dispo[\s\-–—_'’]*retain(ed)?\b.*$/i;
+
+function canonicalKey(name){
+  return String(name||'').toLowerCase().replace(DISPO_RETAIN_RE,'').replace(/[^a-z0-9]+/g,'');
+}
+function hasRetainMarker(name){ return DISPO_RETAIN_RE.test(String(name||'')); }
+
+// Mirrors the type conventions used by saveProperty() — dates send {date:v}, everything else plain text.
+const MERGE_FIELDS = [
+  {k:'code',label:'Property Code'},{k:'owner',label:'Owner'},
+  {k:'pmaDate',label:'PMA Effective Date',date:true},
+  {k:'specialty',label:'Specialty'},{k:'system',label:'System'},{k:'status',label:'Status'},
+  {k:'budgetDue',label:'Budget Due (per PMA)',date:true},
+  {k:'cm',label:'CM'},{k:'srcm',label:'Sr CM'},{k:'rm',label:'RM'},{k:'srrm',label:'Sr RM'},
+  {k:'rvp',label:'RVP'},{k:'svp',label:'SVP'},
+  {k:'forecastTarget',label:'Forecast Target',date:true},
+  {k:'firstDraftTarget',label:'First Draft Target',date:true},
+  {k:'rvpReturnTarget',label:'RVP Return Target',date:true},
+  {k:'cmReturnTarget',label:'CM Return Target',date:true},
+  {k:'rmReviewTarget',label:'RM Review Target',date:true},
+  {k:'finalTarget',label:'Final to Client Target',date:true},
+  {k:'forecastCompleted',label:'Forecast Completed',date:true},
+  {k:'firstDraftRM',label:'First Draft Due to RM',date:true},
+  {k:'firstDraftActual',label:'First Draft Due to RVP',date:true},
+  {k:'rvpReturnActual',label:'RVP Return to RM',date:true},
+  {k:'cmReturnActual',label:'Return to CM',date:true},
+  {k:'rmReviewActual',label:'RM Final Review',date:true},
+  {k:'finalSentActual',label:'Final Budget Sent',date:true},
+  {k:'clientApproved',label:'Approved by Client',date:true},
+  {k:'approvalLetter',label:'Approval Letter Received',date:true},
+  {k:'ticketOpened',label:'Ticket Opened',date:true},
+  {k:'comments',label:'Comments'}
+];
+
+function findDuplicateGroups(){
+  const groups = {};
+  allProperties.forEach(p => {
+    const key = canonicalKey(p.name);
+    if(!key) return;
+    (groups[key] = groups[key] || []).push(p);
+  });
+  return Object.values(groups).filter(g => g.length > 1);
+}
+
+function filledCount(p){ return MERGE_FIELDS.reduce((n,f) => n + (p[f.k] ? 1 : 0), 0); }
+
+// The record to keep is the one WITHOUT the dispo marker (it holds the year's
+// timeline history). If that's ambiguous, keep whichever has more data filled in.
+function pickKeeper(group){
+  const plain = group.filter(p => !hasRetainMarker(p.name));
+  const pool  = plain.length ? plain : group;
+  return pool.slice().sort((a,b) => filledCount(b) - filledCount(a))[0];
+}
+
+// Every field where the two records disagree, in either direction.
+// Default pick: take the new value when there is one, but never let a blank
+// on the incoming record silently wipe existing history.
+function mergePairFields(keep, twin){
+  const rows = [];
+  MERGE_FIELDS.forEach(f => {
+    if(!COL[f.k]) return; // column not present on this board
+    const kv = (keep[f.k]||'').trim(), tv = (twin[f.k]||'').trim();
+    if(kv === tv) return;
+    rows.push({...f, keepVal:kv, twinVal:tv, dflt: tv ? 'new' : 'keep'});
+  });
+  return rows;
+}
+
+// Which record survives can be flipped per pair.
+let dupeSwaps = {};
+function pairKeyOf(a, b){ return [a.id, b.id].sort().join('|'); }
+function toggleDupeSwap(pk){ dupeSwaps[pk] = !dupeSwaps[pk]; openDuplicatesModal(); }
+
+function dupeSelectAll(pid, which){
+  document.querySelectorAll('input[type=radio][name^="sel-' + pid + '-"]').forEach(r => {
+    if(r.value === which) r.checked = true;
+  });
+}
+
+// Reads the user's per-field choices out of the DOM and keeps only real changes.
+function resolveSelections(pid, rows){
+  return rows.map(r => {
+    const sel = document.querySelector('input[name="sel-' + pid + '-' + r.k + '"]:checked')?.value || r.dflt;
+    let value;
+    if(sel === 'keep')      value = r.keepVal;
+    else if(sel === 'new')  value = r.twinVal;
+    else                    value = (document.getElementById('cust-' + pid + '-' + r.k)?.value || '').trim();
+    return {...r, chosen:sel, value};
+  }).filter(r => r.value !== r.keepVal);
+}
+
+function updateDuplicateBadge(){
+  const btn = document.getElementById('dupe-btn');
+  if(!btn) return;
+  let n = 0;
+  findDuplicateGroups().forEach(g => { n += g.length - 1; });
+  if(n > 0){
+    document.getElementById('dupe-count').textContent = n;
+    btn.style.display = '';
+  } else {
+    btn.style.display = 'none';
+  }
+}
+
+function openDuplicatesModal(){
+  const groups = findDuplicateGroups();
+  document.getElementById('dupe-year').textContent = currentYear;
+  const body = document.getElementById('duplicates-body');
+  body.innerHTML = groups.length
+    ? '<div style="font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:16px;">These look like the same property pushed twice by the Monday automation. Merging copies the new values onto the record you keep, saves the duplicate\'s name into <strong>Former Property Name</strong>, and archives the duplicate in Monday.</div>'
+      + groups.map(renderDupeGroup).join('')
+    : '<div style="padding:34px;text-align:center;color:var(--text3);font-size:13px;">No duplicate property records found in ' + currentYear + '.</div>';
+  openModal('duplicates-modal');
+}
+
+function renderDupeGroup(g){
+  const base  = pickKeeper(g);
+  const others = g.filter(p => p.id !== base.id);
+  return others.map(other => {
+    const pk = pairKeyOf(base, other);
+    const keep = dupeSwaps[pk] ? other : base;
+    const twin = dupeSwaps[pk] ? base  : other;
+    const rows = mergePairFields(keep, twin);
+    const pid  = keep.id + '-' + twin.id;
+    const cell = 'padding:5px 9px;border-bottom:1px solid var(--border);vertical-align:middle;';
+    return `<div style="border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px;background:var(--surface2);">
+      <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:12px;">
+        <div style="flex:1;min-width:210px;">
+          <div style="font-size:10px;font-weight:700;color:var(--green);letter-spacing:.5px;margin-bottom:3px;">KEEP THIS RECORD</div>
+          <div style="font-size:13px;font-weight:600;">${esc(keep.name)}</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px;">Code: ${esc(keep.code)||'—'} · id ${keep.id}</div>
+        </div>
+        <div style="flex:1;min-width:210px;">
+          <div style="font-size:10px;font-weight:700;color:#C0392B;letter-spacing:.5px;margin-bottom:3px;">ARCHIVE THIS ONE</div>
+          <div style="font-size:13px;font-weight:600;">${esc(twin.name)}</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px;">Code: ${esc(twin.code)||'—'} · id ${twin.id}</div>
+        </div>
+      </div>
+      ${rows.length ? `
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:7px;">
+        <span style="font-size:11px;color:var(--text2);">${rows.length} field${rows.length===1?'':'s'} differ — pick a value for each:</span>
+        <span style="margin-left:auto;display:flex;gap:6px;">
+          <button class="btn btn-secondary" style="padding:3px 9px;font-size:11px;" onclick="dupeSelectAll('${pid}','keep')">Use all Kept</button>
+          <button class="btn btn-secondary" style="padding:3px 9px;font-size:11px;" onclick="dupeSelectAll('${pid}','new')">Use all Incoming</button>
+        </span>
+      </div>
+      <div style="max-height:260px;overflow:auto;border:1px solid var(--border);border-radius:8px;">
+        <table style="width:100%;font-size:11px;border-collapse:collapse;">
+          <thead><tr>
+            <th style="${cell}text-align:left;font-size:10px;color:var(--text3);">FIELD</th>
+            <th style="${cell}text-align:left;font-size:10px;color:var(--green);">KEPT RECORD</th>
+            <th style="${cell}text-align:left;font-size:10px;color:#C0392B;">INCOMING</th>
+            <th style="${cell}text-align:left;font-size:10px;color:var(--text3);">CUSTOM</th>
+          </tr></thead>
+          <tbody>
+          ${rows.map(r => {
+            const nm = 'sel-' + pid + '-' + r.k;
+            const ci = 'cust-' + pid + '-' + r.k;
+            return `<tr>
+            <td style="${cell}white-space:nowrap;font-weight:600;">${esc(r.label)}</td>
+            <td style="${cell}"><label style="display:flex;gap:5px;align-items:center;cursor:pointer;">
+              <input type="radio" name="${nm}" value="keep" ${r.dflt==='keep'?'checked':''}>
+              <span style="${r.keepVal?'':'color:var(--text3);font-style:italic;'}">${esc(r.keepVal)||'(blank)'}</span></label></td>
+            <td style="${cell}"><label style="display:flex;gap:5px;align-items:center;cursor:pointer;">
+              <input type="radio" name="${nm}" value="new" ${r.dflt==='new'?'checked':''}>
+              <span style="${r.twinVal?'font-weight:600;':'color:var(--text3);font-style:italic;'}">${esc(r.twinVal)||'(blank)'}</span></label></td>
+            <td style="${cell}"><label style="display:flex;gap:5px;align-items:center;">
+              <input type="radio" name="${nm}" value="custom">
+              <input type="${r.date?'date':'text'}" id="${ci}" placeholder="type a value"
+                style="width:100%;max-width:150px;font-size:11px;padding:3px 6px;border:1px solid var(--border);border-radius:5px;"
+                oninput="document.querySelector('input[name=\\'${nm}\\'][value=custom]').checked = true;"></label></td>
+          </tr>`;}).join('')}
+          </tbody>
+        </table>
+      </div>` : '<div style="font-size:11px;color:var(--text3);">Both records hold identical values — only the duplicate will be archived.</div>'}
+      <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">
+        <button class="btn btn-copper" onclick="executeMerge('${keep.id}','${twin.id}')">Merge &amp; Archive Duplicate</button>
+        <button class="btn btn-secondary" onclick="toggleDupeSwap('${pk}')" title="Keep the other record instead">⇄ Swap which one is kept</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function executeMerge(keepId, twinId){
+  const keep = allProperties.find(p => p.id === keepId);
+  const twin = allProperties.find(p => p.id === twinId);
+  if(!keep || !twin){ showToast('Could not find both records — hit Refresh and try again','error'); return; }
+
+  const rows    = mergePairFields(keep, twin);
+  const changes = resolveSelections(keep.id + '-' + twin.id, rows);
+  const msg =
+    'MERGE DUPLICATE — ARE YOU SURE?\n\n' +
+    'KEEP:     ' + keep.name + '   (id ' + keep.id + ')\n' +
+    'ARCHIVE:  ' + twin.name + '   (id ' + twin.id + ')\n\n' +
+    (changes.length
+      ? changes.length + ' field(s) on the kept record will be OVERWRITTEN:\n\n' +
+        changes.map(c => '  • ' + c.label + ':  "' + (c.keepVal || '(blank)') + '"   →   "' +
+          (c.value || '(blank)') + '"' + (c.chosen === 'custom' ? '   [custom]' : '')).join('\n') +
+        '\n\nThe old values shown above will be permanently replaced and CANNOT be recovered from this app.'
+      : 'No field values will change.') +
+    '\n\n"' + twin.name + '" will be archived in Monday (recoverable from Monday\'s archive).\n' +
+    'This action will be logged to Activity under your name.\n\n' +
+    'Continue?';
+  if(!confirm(msg)) return;
+
+  showLoading('Merging duplicate...');
+  try{
+    const colVals = {};
+    // Mirrors saveProperty()'s conventions: dates send {date:v}, empty string clears.
+    changes.forEach(c => { colVals[COL[c.k]] = c.date ? (c.value ? {date:c.value} : '') : c.value; });
+    if(COL.formerName && twin.name) colVals[COL.formerName] = twin.name;
+    if(Object.keys(colVals).length){
+      await mondayQuery(`mutation { change_multiple_column_values(board_id:${BOARD_ID},item_id:${keep.id},column_values:${JSON.stringify(JSON.stringify(colVals))}) { id } }`);
+    }
+    await mondayQuery(`mutation { archive_item(item_id:${twin.id}) { id } }`);
+    logActivity('Duplicate Merged',{
+      property: keep.name,
+      description: 'Merged duplicate "' + twin.name + '" (id ' + twin.id + ', archived) into "' + keep.name +
+        '" (id ' + keep.id + '). ' + changes.length + ' field(s) updated' +
+        (changes.length ? ': ' + changes.map(c =>
+          c.label + ' "' + (c.keepVal || 'blank') + '"→"' + (c.value || 'blank') + '"' +
+          (c.chosen === 'custom' ? ' (custom)' : '')).join('; ') : '') + '.'
+    });
+    hideLoading();
+    showToast('Merged — "' + twin.name + '" archived','success');
+    await loadItems();
+    openDuplicatesModal();
+  }catch(e){
+    hideLoading();
+    showToast('Merge failed: ' + e.message,'error');
   }
 }
 
