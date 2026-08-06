@@ -252,6 +252,7 @@ tr.selected td{background:rgba(184,115,51,.05);}
           <button class="btn btn-secondary" id="dupe-btn" onclick="openDuplicatesModal()" title="Review and merge duplicate property records" style="display:none;border-color:#C0392B;color:#C0392B;">🔀 Duplicates <span id="dupe-count" style="background:#C0392B;color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;margin-left:4px;">0</span></button>
           <button class="btn btn-secondary" id="clean-names-btn" onclick="openCleanNamesModal()" title="Remove the 'dispo retained' suffix from property names in Monday" style="display:none;border-color:var(--juniper);color:var(--juniper);">🧹 Clean Names <span id="clean-names-count" style="background:var(--juniper);color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;margin-left:4px;">0</span></button>
         </div>
+        <div id="dupe-search-hint" style="display:none;margin:12px 24px 0;padding:11px 14px;border:1px solid #C0392B;border-radius:10px;background:rgba(192,57,43,0.06);align-items:center;gap:12px;flex-wrap:wrap;"></div>
         <div class="table-scroll">
           <table>
             <thead><tr>
@@ -959,7 +960,7 @@ function filterTable(){
     const av=(a[sortField]||'').toString(),bv=(b[sortField]||'').toString();
     return sortAsc?av.localeCompare(bv):bv.localeCompare(av);
   });
-  currentPage=1;renderTable();updateStats();
+  currentPage=1;renderTable();updateStats();updateDupeSearchHint();
 }
 function quickFilter(t){
   activeFilter=t;
@@ -1258,7 +1259,7 @@ function updateDuplicateBadge(){
   else btn.style.display='none';
 }
 
-function openDuplicatesModal(){
+function openDuplicatesModal(focusKey){
   const groups=findDuplicateGroups();
   document.getElementById('dupe-year').textContent=currentYear;
   const canMerge=isAdmin&&!yearReadOnly();
@@ -1269,12 +1270,51 @@ function openDuplicatesModal(){
     ? note+groups.map(g=>renderDupeGroup(g,canMerge)).join('')
     : '<div style="padding:34px;text-align:center;color:var(--text3);font-size:13px;">No duplicate property records found in '+currentYear+'.</div>';
   document.getElementById('duplicates-modal').classList.add('open');
+  // Opened from the search banner — jump straight to the pair they searched for.
+  if(focusKey){
+    const el=document.querySelector('#duplicates-body .dupe-group[data-dupe-key="'+(window.CSS&&CSS.escape?CSS.escape(focusKey):focusKey)+'"]');
+    if(el){
+      el.style.outline='2px solid var(--copper)';el.style.borderRadius='10px';
+      setTimeout(()=>el.scrollIntoView({block:'center',behavior:'smooth'}),60);
+      setTimeout(()=>{el.style.outline='';},2600);
+    }
+  }
 }
+
+// Prompts the merge at the moment a search surfaces a property with a duplicate.
+function updateDupeSearchHint(){
+  const el=document.getElementById('dupe-search-hint');
+  if(!el)return;
+  const hide=()=>{el.style.display='none';};
+  const search=(document.getElementById('search-input')?.value||'').trim();
+  if(!search)return hide();
+  const groups=findDuplicateGroups();
+  if(!groups.length)return hide();
+  const visible=new Set(filteredProperties.map(p=>p.id));
+  const hits=groups.filter(g=>g.some(p=>visible.has(p.id)));
+  if(!hits.length)return hide();
+  const names=hits.map(g=>displayName(pickKeeper(g).name));
+  const one=hits.length===1;
+  const label=one
+    ?`<strong>${esc(names[0])}</strong> has a duplicate record on this board.`
+    :`<strong>${hits.length}</strong> of these properties have duplicate records: ${esc(names.slice(0,3).join(', '))}${names.length>3?` +${names.length-3} more`:''}.`;
+  const canMerge=isAdmin&&!yearReadOnly();
+  const focusArg=one?`'${esc(canonicalKey(hits[0][0].name)).replace(/'/g,"\\'")}'`:'';
+  el.innerHTML=
+    `<div style="flex:1;min-width:240px;font-size:12px;color:var(--text);line-height:1.6;">
+       <span style="color:#C0392B;font-weight:700;">⚠ </span>${label}
+       <div style="font-size:11px;color:var(--text2);margin-top:2px;">${canMerge?'Merging keeps one record, copies the values you pick onto it, and disposes the other.':'Merging is limited to admin sessions on the current year board.'}</div>
+     </div>
+     <button class="btn btn-copper" style="flex-shrink:0;" onclick="openDuplicatesModal(${focusArg})">${canMerge?'Review &amp; Merge':'View Duplicates'}</button>
+     <button class="btn btn-secondary" style="flex-shrink:0;" onclick="dismissDupeHint()">Not now</button>`;
+  el.style.display='flex';
+}
+function dismissDupeHint(){const el=document.getElementById('dupe-search-hint');if(el)el.style.display='none';}
 
 function renderDupeGroup(g,canMerge){
   const base=pickKeeper(g),others=g.filter(p=>p.id!==base.id);
   const cell='padding:5px 9px;border-bottom:1px solid var(--border);vertical-align:middle;';
-  return others.map(other=>{
+  return `<div class="dupe-group" data-dupe-key="${esc(canonicalKey(base.name))}">`+others.map(other=>{
     const pk=pairKeyOf(base,other);
     const keep=dupeSwaps[pk]?other:base, twin=dupeSwaps[pk]?base:other;
     const rows=mergePairFields(keep,twin), pid=keep.id+'-'+twin.id;
@@ -1331,7 +1371,7 @@ function renderDupeGroup(g,canMerge){
         <button class="btn btn-secondary" onclick="toggleDupeSwap('${pk}')" title="Keep the other record instead">⇄ Swap which one is kept</button>
       </div>`:''}
     </div>`;
-  }).join('');
+  }).join('')+`</div>`;
 }
 
 async function applyMergeValue(itemId,f,value){

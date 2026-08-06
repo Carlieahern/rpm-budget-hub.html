@@ -449,6 +449,7 @@
           <button class="btn btn-secondary" onclick="openBulkClearDates()" style="border-color:#C0392B;color:#C0392B;">🗑 Clear Dates for All</button>
 <button class="btn btn-danger" onclick="clearSelection()">✕ Clear Selections</button>
         </div>
+        <div id="dupe-search-hint" style="display:none;margin:0 0 12px;padding:11px 14px;border:1px solid #C0392B;border-radius:10px;background:rgba(192,57,43,0.06);align-items:center;gap:12px;flex-wrap:wrap;"></div>
         <div class="table-wrap">
           <table>
             <thead><tr>
@@ -1620,6 +1621,41 @@ function resolveSelections(pid, rows){
   }).filter(r => r.value !== r.keepVal);
 }
 
+// Surfaces the merge prompt at the moment someone searches for a property that
+// has a duplicate — the point where the two records are actually confusing them —
+// rather than relying on them noticing the toolbar badge.
+function updateDupeSearchHint(){
+  const el = document.getElementById('dupe-search-hint');
+  if(!el) return;
+  const hide = () => { el.style.display = 'none'; };
+  const search = (document.getElementById('search-input')?.value || '').trim();
+  if(!search) return hide();                     // only on an active search
+  const groups = findDuplicateGroups();
+  if(!groups.length) return hide();
+  const visible = new Set(filteredProperties.map(p => p.id));
+  const hits = groups.filter(g => g.some(p => visible.has(p.id)));
+  if(!hits.length) return hide();
+
+  const names = hits.map(g => displayName(pickKeeper(g).name));
+  const one   = hits.length === 1;
+  const label = one
+    ? `<strong>${esc(names[0])}</strong> has a duplicate record on this board.`
+    : `<strong>${hits.length}</strong> of these properties have duplicate records: ${esc(names.slice(0,3).join(', '))}${names.length>3?` +${names.length-3} more`:''}.`;
+  const focusArg = one ? `'${esc(canonicalKey(hits[0][0].name)).replace(/'/g,"\\'")}'` : '';
+  el.innerHTML =
+    `<div style="flex:1;min-width:240px;font-size:12px;color:var(--text);line-height:1.6;">
+       <span style="color:#C0392B;font-weight:700;">⚠ </span>${label}
+       <div style="font-size:11px;color:var(--text2);margin-top:2px;">Merging keeps one record, copies the new values onto it, and archives the other.</div>
+     </div>
+     <button class="btn btn-copper" style="flex-shrink:0;" onclick="openDuplicatesModal(${focusArg})">Review &amp; Merge</button>
+     <button class="btn btn-secondary" style="flex-shrink:0;" onclick="dismissDupeHint()">Not now</button>`;
+  el.style.display = 'flex';
+}
+function dismissDupeHint(){
+  const el = document.getElementById('dupe-search-hint');
+  if(el) el.style.display = 'none';
+}
+
 function updateDuplicateBadge(){
   const btn = document.getElementById('dupe-btn');
   if(!btn) return;
@@ -1633,7 +1669,7 @@ function updateDuplicateBadge(){
   }
 }
 
-function openDuplicatesModal(){
+function openDuplicatesModal(focusKey){
   const groups = findDuplicateGroups();
   document.getElementById('dupe-year').textContent = currentYear;
   const body = document.getElementById('duplicates-body');
@@ -1642,12 +1678,23 @@ function openDuplicatesModal(){
       + groups.map(renderDupeGroup).join('')
     : '<div style="padding:34px;text-align:center;color:var(--text3);font-size:13px;">No duplicate property records found in ' + currentYear + '.</div>';
   openModal('duplicates-modal');
+  // When opened from the search banner, jump straight to the pair they searched for
+  // instead of making them hunt for it in a long list.
+  if(focusKey){
+    const el = body.querySelector('.dupe-group[data-dupe-key="' + (window.CSS && CSS.escape ? CSS.escape(focusKey) : focusKey) + '"]');
+    if(el){
+      el.style.outline = '2px solid var(--copper)';
+      el.style.borderRadius = '10px';
+      setTimeout(() => el.scrollIntoView({block:'center', behavior:'smooth'}), 60);
+      setTimeout(() => { el.style.outline = ''; }, 2600);
+    }
+  }
 }
 
 function renderDupeGroup(g){
   const base  = pickKeeper(g);
   const others = g.filter(p => p.id !== base.id);
-  return others.map(other => {
+  return `<div class="dupe-group" data-dupe-key="${esc(canonicalKey(base.name))}">` + others.map(other => {
     const pk = pairKeyOf(base, other);
     const keep = dupeSwaps[pk] ? other : base;
     const twin = dupeSwaps[pk] ? base  : other;
@@ -1709,7 +1756,7 @@ function renderDupeGroup(g){
         <button class="btn btn-secondary" onclick="toggleDupeSwap('${pk}')" title="Keep the other record instead">⇄ Swap which one is kept</button>
       </div>
     </div>`;
-  }).join('');
+  }).join('') + `</div>`;
 }
 
 async function executeMerge(keepId, twinId){
@@ -1895,7 +1942,7 @@ function filterTable() {
     return ms&&mo&&mr&&mst&&mq;
   });
   filteredProperties.sort((a,b) => { const av=(a[sortField]||'[]').toString(), bv=(b[sortField]||'[]').toString(); return sortAsc?av.localeCompare(bv):bv.localeCompare(av); });
-  currentPage = 1; renderTable(); updateStats();
+  currentPage = 1; renderTable(); updateStats(); updateDupeSearchHint();
   document.getElementById('nav-count').textContent = filteredProperties.length;
 }
 
