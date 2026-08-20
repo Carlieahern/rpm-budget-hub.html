@@ -2120,7 +2120,7 @@ async function saveProperty(isComplete=false){
   if(!validateForm()) return;
   if(!validateTimeline()) return;
   const name=document.getElementById('f-name').value.trim();
-  const pmaVal=document.getElementById('f-pma-val').value||'[]';
+  const pmaVal=document.getElementById('f-pma-val').value||'';
   const editId=document.getElementById('edit-id').value;
 
   const groupId = siteGroupIds[currentYear];
@@ -2153,7 +2153,11 @@ async function saveProperty(isComplete=false){
   addCol(COL.rmReviewActual,'f-rm-review',true);addCol(COL.finalSentActual,'f-final',true);
   addCol(COL.clientApproved,'f-approved',true);addCol(COL.approvalLetter,'f-approval-letter',true);
   addCol(COL.ticketOpened,'f-ticket',true);addCol(COL.comments,'f-comments');
-  if(COL.metPMA&&pmaVal)colVals[COL.metPMA]=pmaVal;
+  // Met PMA is auto-calculated from Final Sent vs Budget Due, so always push it —
+  // including an empty value, which clears the Monday column when the dates no
+  // longer produce a Yes/No. (Previously an empty result fell back to a literal
+  // "[]" string, which is truthy, so the column could be written but never cleared.)
+  if(COL.metPMA)colVals[COL.metPMA]=pmaVal;
   // Set Completion Status in Monday
   if(COL.completionStatus){
     if(isComplete) colVals[COL.completionStatus] = {label:'Complete'}; // Complete
