@@ -151,6 +151,10 @@
   .hub-chip-del:hover{color:#e05c5c;}
   .hub-chip-add{display:none;align-items:center;justify-content:center;width:32px;height:32px;border-radius:9px;background:transparent;border:1px dashed rgba(255,255,255,.3);color:rgba(255,255,255,.6);font-size:17px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .18s;}
   .hub-chip-add:hover{border-color:#B87333;color:#B87333;background:rgba(184,115,51,.08);}
+  .emoji-pick{display:grid;grid-template-columns:repeat(10,1fr);gap:3px;max-height:132px;overflow-y:auto;background:rgba(0,0,0,.03);border:1px solid var(--border);border-radius:8px;padding:7px;}
+  .emoji-opt{background:transparent;border:1px solid transparent;border-radius:6px;font-size:16px;line-height:1;padding:5px 0;cursor:pointer;font-family:inherit;transition:background .12s,border-color .12s;}
+  .emoji-opt:hover{background:rgba(184,115,51,.14);}
+  .emoji-opt.sel{background:rgba(184,115,51,.24);border-color:#B87333;}
 
   /* Deliberately wider than the 1160px tile grid — these are margin notes, so they
      run out toward the edges of the screen rather than boxing in the title. */
@@ -755,8 +759,14 @@
       <input type="text" class="form-input" id="addlink-label" placeholder="e.g. Budget Calendar" style="width:100%;" maxlength="40">
       <label class="form-label" style="display:block;margin:12px 0 5px;">Link URL</label>
       <input type="text" class="form-input" id="addlink-url" placeholder="https://..." style="width:100%;">
-      <label class="form-label" style="display:block;margin:12px 0 5px;">Icon <span style="font-weight:400;color:var(--text3);">(optional emoji)</span></label>
-      <input type="text" class="form-input" id="addlink-icon" placeholder="🔗" style="width:90px;" maxlength="4">
+      <label class="form-label" style="display:flex;align-items:center;margin:12px 0 5px;">Icon <span style="font-weight:400;color:var(--text3);margin-left:4px;">(optional)</span>
+        <span style="margin-left:auto;display:flex;align-items:center;gap:6px;">
+          <span id="addlink-icon-preview" style="font-size:16px;"></span>
+          <button type="button" class="clear-date-link" onclick="pickEmoji(null,'')">none</button>
+        </span>
+      </label>
+      <div class="emoji-pick" id="addlink-emoji-grid"></div>
+      <input type="hidden" id="addlink-icon">
       <div id="addlink-err" style="display:none;font-size:12px;color:#C0392B;margin-top:10px;"></div>
     </div>
     <div class="year-switch-actions">
@@ -969,8 +979,38 @@ function logQuickLink(label){
   }catch(e){}
 }
 
+// Curated rather than a full emoji keyboard — budgeting, documents, dates,
+// status marks and property icons are what these links actually point at.
+const HUB_EMOJIS = [
+  '💰','💵','💲','🧾','💳','🏦','📊','📈','📉','🧮',
+  '📅','📆','🗓️','⏰','⏳','🔔','📌','📎','🗂️','📁',
+  '📄','📋','📑','📝','✏️','📚','📖','🔍','🔗','⚙️',
+  '✅','☑️','✔️','⭐','🚩','⚠️','❗','❓','🎯','📢',
+  '🏠','🏢','🏘️','🔑','🛠️','👥','🎓','💡','🚀','📬'
+];
+
+function renderEmojiPicker(){
+  const grid = document.getElementById('addlink-emoji-grid');
+  if(!grid) return;
+  grid.innerHTML = HUB_EMOJIS.map(e =>
+    `<button type="button" class="emoji-opt" title="${esc(e)}" onclick="pickEmoji(this,'${esc(e)}')">${esc(e)}</button>`
+  ).join('');
+}
+
+function pickEmoji(btn, e){
+  const hidden = document.getElementById('addlink-icon');
+  const preview = document.getElementById('addlink-icon-preview');
+  if(hidden) hidden.value = e || '';
+  if(preview) preview.textContent = e || '';
+  const grid = document.getElementById('addlink-emoji-grid');
+  if(grid) [...grid.children].forEach(c => c.classList.remove('sel'));
+  if(btn) btn.classList.add('sel');
+}
+
 function openAddLinkModal(){
   ['addlink-label','addlink-url','addlink-icon'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+  renderEmojiPicker();
+  pickEmoji(null, '');
   const err = document.getElementById('addlink-err'); if(err) err.style.display='none';
   document.getElementById('addlink-modal').classList.add('open');
 }
