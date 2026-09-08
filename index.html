@@ -2472,9 +2472,16 @@ async function saveProperty(isComplete=false){
   const colVals={};
   const addCol=(colId,inputId,isDate=false)=>{
     if(!colId)return;
-    const v=document.getElementById(inputId)?.value?.trim();
+    const el=document.getElementById(inputId);
+    // If the field isn't on the form, this save knows nothing about that column —
+    // leave it alone. Without this, a missing input read as undefined and the date
+    // branch below sent "", which told Monday to CLEAR the column. The six Target
+    // date inputs aren't in the edit form, so every save was wiping them.
+    if(!el)return;
+    const v=el.value?.trim();
     if(isDate){
-      // Always send date fields — empty string tells Monday to clear the value
+      // Empty string tells Monday to clear the value — intentional for a field the
+      // user actually cleared via the "clear date" link.
       colVals[colId] = v ? {date:v} : '';
     } else if(v){
       colVals[colId]=v;
