@@ -748,6 +748,45 @@
   </div>
 </div>
 
+<!-- ADD TO CALENDAR MODAL -->
+<div class="modal-overlay" id="calendar-modal">
+  <div class="modal" style="max-width:520px;">
+    <div class="modal-header modal-header-accent">
+      <div><div class="modal-title">📅 Would you like to add these dates to your calendar?</div><div class="modal-subtitle" id="cal-prop-name"></div></div>
+      <button class="modal-close" onclick="closeModal('calendar-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+        <span style="font-size:12px;color:var(--text2);">Pick the dates you want:</span>
+        <span style="margin-left:auto;display:flex;gap:6px;">
+          <button class="btn btn-secondary" style="padding:3px 9px;font-size:11px;" onclick="calSelectAll(true)">All</button>
+          <button class="btn btn-secondary" style="padding:3px 9px;font-size:11px;" onclick="calSelectAll(false)">None</button>
+        </span>
+      </div>
+      <div id="cal-date-list" style="border:1px solid var(--border);border-radius:8px;max-height:230px;overflow:auto;"></div>
+      <div style="margin-top:16px;">
+        <label class="form-label" style="display:block;margin-bottom:5px;">Remind me</label>
+        <select class="form-select" id="cal-reminder" style="width:100%;">
+          <option value="">No reminder</option>
+          <option value="0">On the day (9:00 AM)</option>
+          <option value="1" selected>1 day before (9:00 AM)</option>
+          <option value="2">2 days before (9:00 AM)</option>
+          <option value="3">3 days before (9:00 AM)</option>
+          <option value="7">1 week before (9:00 AM)</option>
+          <option value="14">2 weeks before (9:00 AM)</option>
+        </select>
+        <div style="font-size:11px;color:var(--text3);margin-top:8px;line-height:1.6;">
+          Downloads a calendar file. Opening it adds every date you picked to Outlook at once — reminders included.
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('calendar-modal')">No thanks</button>
+      <button class="btn btn-copper" onclick="downloadCalendarFile()">Add to Calendar</button>
+    </div>
+  </div>
+</div>
+
 <!-- ADD QUICK LINK MODAL (admin) -->
 <div class="year-switch-overlay" id="addlink-modal">
   <div class="year-switch-modal" style="max-width:440px;">
@@ -2530,13 +2569,137 @@ async function saveProperty(isComplete=false){
       showToast('Property added','success');
       logActivity('Property Added',{property:name});
     }
+    // Read the dates off the form before it closes, then offer them once the save
+    // has actually landed. Only on a plain Save — finishing a property shouldn't
+    // interrupt with a prompt.
+    const calDates = isComplete ? [] : calFieldsFromForm();
     closeModal('property-modal');
     await loadItems();
+    maybeOfferCalendar(name, calDates);
   } catch(err){
     hideLoading();
     showToast('Save failed: '+err.message,'error');
   }
 }
+// ============================================================
+// ADD TO CALENDAR
+// ============================================================
+// Produces a standard .ics file rather than an Outlook deep link: one file can
+// carry every date the user ticked plus real reminders, and it opens the same way
+// in Outlook desktop, Outlook on the web, Apple Calendar and Google Calendar.
+// A deep link would mean one browser tab per date and no reminder support.
+let calPending = null;   // { property, dates:[{label,date}] }
+
+// Dates offered to the calendar — the ones that actually exist on the edit form.
+function calFieldsFromForm(){
+  const fields = [{id:'f-budget-due', label:'Budget Due to Client per PMA', pre:true}]
+    .concat(TIMELINE_FIELDS.map(f => ({id:f.id, label:f.label, pre:false})));
+  return fields
+    .map(f => {
+      const el = document.getElementById(f.id);
+      const v = el && el.value ? el.value.trim() : '';
+      return v ? {label:f.label, date:v, pre:f.pre} : null;
+    })
+    .filter(Boolean);
+}
+
+function maybeOfferCalendar(propertyName, dates){
+  if(!dates.length) return;
+  calPending = {property:propertyName, dates};
+  document.getElementById('cal-prop-name').textContent = displayName(propertyName);
+  document.getElementById('cal-date-list').innerHTML = dates.map((d,i) => `
+    <label style="display:flex;align-items:center;gap:9px;padding:9px 12px;border-bottom:1px solid var(--border);cursor:pointer;font-size:13px;">
+      <input type="checkbox" id="cal-chk-${i}" ${d.pre?'checked':''} style="accent-color:var(--copper);width:15px;height:15px;cursor:pointer;">
+      <span style="flex:1;">${esc(d.label)}</span>
+      <span style="font-size:12px;color:var(--text2);font-weight:600;white-space:nowrap;">${esc(fmtDateDisplay(d.date)||d.date)}</span>
+    </label>`).join('');
+  openModal('calendar-modal');
+}
+
+function calSelectAll(on){
+  if(!calPending) return;
+  calPending.dates.forEach((_,i) => {
+    const el = document.getElementById('cal-chk-'+i);
+    if(el) el.checked = on;
+  });
+}
+
+// RFC 5545 text escaping — a property name with a comma would otherwise split the field.
+function icsEscape(s){
+  return String(s||'').replace(/\\/g,'\\\\').replace(/;/g,'\\;').replace(/,/g,'\\,').replace(/\r?\n/g,'\\n');
+}
+// Content lines are capped at 75 octets; continuations begin with a single space.
+function icsFold(line){
+  if(line.length <= 73) return line;
+  const out = []; let s = line;
+  while(s.length > 73){ out.push(s.slice(0,73)); s = ' ' + s.slice(73); }
+  out.push(s);
+  return out.join('\r\n');
+}
+function icsDay(iso){ return iso.replace(/-/g,''); }
+function icsDayAfter(iso){
+  const d = new Date(iso + 'T00:00:00');
+  d.setDate(d.getDate() + 1);
+  return d.toISOString().slice(0,10).replace(/-/g,'');
+}
+// All-day events start at midnight, so a plain "-P1D" would fire at midnight.
+// Offset to 9am on the target day instead.
+function icsTrigger(days){
+  if(days === 0) return 'PT9H';
+  return '-PT' + (24*days - 9) + 'H';
+}
+
+function buildIcs(propertyName, entries, reminderDays){
+  const stamp = new Date().toISOString().replace(/[-:]/g,'').split('.')[0] + 'Z';
+  const seed  = Date.now();
+  const lines = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//RPM Living//Budget Due Date Tracker//EN','CALSCALE:GREGORIAN','METHOD:PUBLISH'];
+  entries.forEach((e,i) => {
+    const title = e.label + ' — ' + displayName(propertyName);
+    lines.push('BEGIN:VEVENT');
+    lines.push('UID:rpm-' + seed + '-' + i + '@rpmliving');
+    lines.push('DTSTAMP:' + stamp);
+    lines.push('DTSTART;VALUE=DATE:' + icsDay(e.date));
+    lines.push('DTEND;VALUE=DATE:' + icsDayAfter(e.date));
+    lines.push(icsFold('SUMMARY:' + icsEscape(title)));
+    lines.push(icsFold('DESCRIPTION:' + icsEscape('From the RPM Budget Due Date Tracker.')));
+    lines.push('TRANSP:TRANSPARENT');
+    if(reminderDays !== null){
+      lines.push('BEGIN:VALARM','ACTION:DISPLAY');
+      lines.push(icsFold('DESCRIPTION:' + icsEscape(title)));
+      lines.push('TRIGGER:' + icsTrigger(reminderDays));
+      lines.push('END:VALARM');
+    }
+    lines.push('END:VEVENT');
+  });
+  lines.push('END:VCALENDAR');
+  return lines.join('\r\n');
+}
+
+function downloadCalendarFile(){
+  if(!calPending) return;
+  const picked = calPending.dates.filter((_,i) => {
+    const el = document.getElementById('cal-chk-'+i);
+    return el && el.checked;
+  });
+  if(!picked.length){ showToast('Tick at least one date, or choose No thanks','error'); return; }
+  const rv = document.getElementById('cal-reminder').value;
+  const reminderDays = rv === '' ? null : parseInt(rv,10);
+  const ics = buildIcs(calPending.property, picked, reminderDays);
+  const safeName = displayName(calPending.property).replace(/[^a-z0-9]+/gi,'-').replace(/^-+|-+$/g,'').toLowerCase() || 'property';
+  const blob = new Blob([ics], {type:'text/calendar;charset=utf-8'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = 'budget-dates-' + safeName + '.ics';
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 0);
+  closeModal('calendar-modal');
+  logActivity('Dates Added to Calendar',{property:calPending.property,
+    description:`Downloaded a calendar file with ${picked.length} date(s) for "${calPending.property}"` +
+      (reminderDays === null ? ' with no reminder' : `, reminding ${reminderDays === 0 ? 'on the day' : reminderDays + ' day(s) before'}`) + '.'});
+  showToast(`Calendar file ready — ${picked.length} date${picked.length===1?'':'s'}`,'success');
+  calPending = null;
+}
+
 // ── DISPO FLOW ─────────────────────────────────────────────────────────────
 // A property in the middle of an ownership transition shouldn't be disposed until
 // its actual disposition date. The date entered here is only a GATE — it decides
