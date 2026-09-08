@@ -17,6 +17,37 @@ function _ensureFirebase() {
   return _fbReady;
 }
 
+// ── HUB QUICK LINKS ─────────────────────────────────────────────────────────
+// Stored in Firestore (collection `hub_links`) rather than localStorage so the
+// links an admin adds are visible to everyone, not just their own browser.
+// Sorted client-side: an orderBy() query would silently drop any document that
+// is missing the sort field.
+async function hubLinksLoad(){
+  await _ensureFirebase();
+  const snap = await _fbMod.getDocs(_fbMod.collection(_fbDb, 'hub_links'));
+  return snap.docs
+    .map(d => ({ id: d.id, ...d.data() }))
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+}
+
+async function hubLinksAdd(entry){
+  await _ensureFirebase();
+  const ref = await _fbMod.addDoc(_fbMod.collection(_fbDb, 'hub_links'), {
+    label: entry.label || '',
+    url: entry.url || '',
+    icon: entry.icon || '',
+    order: entry.order ?? Date.now(),
+    createdBy: entry.createdBy || '',
+    createdAt: _fbMod.serverTimestamp()
+  });
+  return ref.id;
+}
+
+async function hubLinksDelete(id){
+  await _ensureFirebase();
+  await _fbMod.deleteDoc(_fbMod.doc(_fbDb, 'hub_links', id));
+}
+
 // entry: { name, email, role, tool, action, property, description }
 async function logToFirebase(entry) {
   try {

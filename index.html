@@ -140,6 +140,47 @@
   .date-tooltip{display:none;position:fixed;background:var(--juniper);color:#fff;border-radius:10px;padding:14px 16px;min-width:280px;z-index:2000;box-shadow:0 8px 24px rgba(0,0,0,0.2);font-size:12px;line-height:1.4;}
   .date-tooltip::before{content:'';position:absolute;top:-5px;left:14px;border-left:5px solid transparent;border-right:5px solid transparent;border-bottom:5px solid var(--juniper);}
   .date-tooltip.flip-up::before{top:auto;bottom:-5px;border-bottom:none;border-top:5px solid var(--juniper);}
+
+  /* ---- Hub quick links + rolling digest panels ---- */
+  #hub-quicklinks-wrap{width:100%;max-width:1160px;display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:26px;min-height:34px;}
+  #hub-quicklinks{display:flex;align-items:center;gap:9px;flex-wrap:wrap;}
+  .hub-chip{position:relative;display:inline-flex;align-items:center;gap:7px;background:#1e2d4a;border:1px solid rgba(184,115,51,.55);border-radius:9px;padding:7px 13px;font-size:12px;font-weight:600;color:#fff;text-decoration:none;transition:transform .18s,border-color .18s,box-shadow .18s;font-family:inherit;cursor:pointer;}
+  .hub-chip:hover{transform:translateY(-2px);border-color:#B87333;box-shadow:0 6px 18px rgba(184,115,51,.28);}
+  .hub-chip-icon{font-size:13px;line-height:1;}
+  .hub-chip-del{margin-left:2px;border:none;background:transparent;color:rgba(255,255,255,.4);font-size:14px;line-height:1;cursor:pointer;padding:0 0 0 4px;font-family:inherit;}
+  .hub-chip-del:hover{color:#e05c5c;}
+  .hub-chip-add{display:none;align-items:center;justify-content:center;width:32px;height:32px;border-radius:9px;background:transparent;border:1px dashed rgba(255,255,255,.3);color:rgba(255,255,255,.6);font-size:17px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .18s;}
+  .hub-chip-add:hover{border-color:#B87333;color:#B87333;background:rgba(184,115,51,.08);}
+
+  #hub-hero{width:100%;max-width:1160px;display:grid;grid-template-columns:1fr auto 1fr;gap:26px;align-items:center;margin-bottom:34px;}
+  #hub-hero-center{text-align:center;min-width:260px;}
+  /* No card — these sit directly on the hub background. */
+  .hub-panel{background:transparent;border:none;border-radius:0;padding:0 2px;box-shadow:none;}
+  .hub-panel-head{display:flex;align-items:center;gap:7px;font-size:11px;font-weight:700;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.6px;margin-bottom:9px;padding-bottom:7px;border-bottom:1px solid rgba(255,255,255,.09);}
+  .hub-panel-count{margin-left:auto;font-size:11px;font-weight:700;color:rgba(255,255,255,.4);letter-spacing:0;}
+  /* Fixed viewport — the track scrolls inside it when the list is too long to fit. */
+  .hub-panel-view{position:relative;overflow:hidden;height:104px;}
+  .hub-panel-track{display:flex;flex-direction:column;gap:5px;}
+  .hub-panel-track.rolling{animation-name:hubroll;animation-timing-function:linear;animation-iteration-count:infinite;}
+  /* The track holds two identical copies, so -50% lands exactly on the seam. */
+  @keyframes hubroll{from{transform:translateY(0);}to{transform:translateY(-50%);}}
+  .hub-panel-view:hover .hub-panel-track.rolling{animation-play-state:paused;}
+  @media (prefers-reduced-motion:reduce){
+    .hub-panel-track.rolling{animation:none;}
+    .hub-panel-view{overflow-y:auto;}
+  }
+  .hub-row{display:flex;align-items:center;gap:9px;font-size:12px;color:rgba(255,255,255,.82);line-height:1.35;}
+  .hub-row-name{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .hub-row-date{font-size:11px;font-weight:700;white-space:nowrap;}
+  .hub-row-date.soon{color:#e8a33d;}
+  .hub-row-date.past{color:#e05c5c;}
+  .hub-row-date.ok{color:rgba(255,255,255,.55);}
+  .hub-row-date.done{color:#4cc38a;}
+  .hub-loading,.hub-empty{font-size:12px;color:rgba(255,255,255,.35);padding:10px 0;}
+  @media (max-width:1000px){
+    #hub-hero{grid-template-columns:1fr;}
+    #hub-hero-center{order:-1;}
+  }
   .date-tooltip-row{display:flex;justify-content:space-between;gap:16px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.1);}
   .date-tooltip-row:last-child{border-bottom:none;}
   .date-tooltip-label{color:rgba(255,255,255,.7);white-space:nowrap;}
@@ -264,10 +305,33 @@
     <div id="hub-user-badge-name" style="font-size:13px;font-weight:600;color:#fff;"></div>
     <div id="hub-user-badge-role" style="font-size:11px;color:rgba(255,255,255,0.5);"></div>
   </div>
-  <div style="width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px;">
-    <img src="RPMLivingLogo__Copper.jpg" style="width:100px;height:auto;background:white;border-radius:14px;padding:10px 14px;display:block;margin:0 auto 24px;">
-    <h1 style="font-size:28px;font-weight:700;color:#ffffff;margin-bottom:6px;letter-spacing:-0.3px;">RPM Living Budget Hub</h1>
-    <p style="font-size:14px;color:rgba(255,255,255,0.45);margin-bottom:40px;">Select a tool to get started</p>
+  <div style="width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px 20px 40px;">
+
+    <!-- Quick links bar — small link chips, managed by an admin via the + button -->
+    <div id="hub-quicklinks-wrap">
+      <div id="hub-quicklinks"></div>
+      <button id="hub-addlink-btn" class="hub-chip-add" onclick="openAddLinkModal()" title="Add a quick link">+</button>
+    </div>
+
+    <!-- Approved digest | logo | due digest -->
+    <div id="hub-hero">
+      <div class="hub-panel" id="hub-approved-panel">
+        <div class="hub-panel-head"><span>✅</span><span>Approved — last 7 days</span><span class="hub-panel-count" id="hub-approved-count"></span></div>
+        <div class="hub-panel-view"><div class="hub-panel-track" id="hub-approved-list"><div class="hub-loading">Loading…</div></div></div>
+      </div>
+
+      <div id="hub-hero-center">
+        <img src="RPMLivingLogo__Copper.jpg" style="width:100px;height:auto;background:white;border-radius:14px;padding:10px 14px;display:block;margin:0 auto 24px;">
+        <h1 style="font-size:28px;font-weight:700;color:#ffffff;margin-bottom:6px;letter-spacing:-0.3px;">RPM Living Budget Hub</h1>
+        <p style="font-size:14px;color:rgba(255,255,255,0.45);">Select a tool to get started</p>
+      </div>
+
+      <div class="hub-panel" id="hub-due-panel">
+        <div class="hub-panel-head"><span>📅</span><span id="hub-due-title">Due this month</span><span class="hub-panel-count" id="hub-due-count"></span></div>
+        <div class="hub-panel-view"><div class="hub-panel-track" id="hub-due-list"><div class="hub-loading">Loading…</div></div></div>
+      </div>
+    </div>
+
     <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;width:100%;max-width:1160px;">
 
       <button onclick="navTile('Budget Due Date Tracker', launchTracker)" style="background:#1e2d4a;border:2px solid #B87333;border-radius:16px;padding:26px 22px;text-align:left;cursor:pointer;transition:all 0.2s;box-shadow:0 4px 20px rgba(0,0,0,0.3);" onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 8px 32px rgba(184,115,51,0.3)'" onmouseout="this.style.transform='';this.style.boxShadow='0 4px 20px rgba(0,0,0,0.3)'">
@@ -678,6 +742,28 @@
   </div>
 </div>
 
+<!-- ADD QUICK LINK MODAL (admin) -->
+<div class="year-switch-overlay" id="addlink-modal">
+  <div class="year-switch-modal" style="max-width:440px;">
+    <div class="year-switch-icon">🔗</div>
+    <div class="year-switch-title">Add a Quick Link</div>
+    <div class="year-switch-sub">Appears at the top of the hub for everyone.</div>
+    <div style="text-align:left;margin:16px 0 4px;">
+      <label class="form-label" style="display:block;margin-bottom:5px;">Label</label>
+      <input type="text" class="form-input" id="addlink-label" placeholder="e.g. Budget Calendar" style="width:100%;" maxlength="40">
+      <label class="form-label" style="display:block;margin:12px 0 5px;">Link URL</label>
+      <input type="text" class="form-input" id="addlink-url" placeholder="https://..." style="width:100%;">
+      <label class="form-label" style="display:block;margin:12px 0 5px;">Icon <span style="font-weight:400;color:var(--text3);">(optional emoji)</span></label>
+      <input type="text" class="form-input" id="addlink-icon" placeholder="🔗" style="width:90px;" maxlength="4">
+      <div id="addlink-err" style="display:none;font-size:12px;color:#C0392B;margin-top:10px;"></div>
+    </div>
+    <div class="year-switch-actions">
+      <button class="btn btn-secondary" onclick="closeAddLinkModal()">Cancel</button>
+      <button class="btn btn-copper" onclick="saveQuickLink()">Add Link</button>
+    </div>
+  </div>
+</div>
+
 <!-- CLEAN NAMES MODAL -->
 <div class="modal-overlay" id="clean-names-modal">
   <div class="modal" style="max-width:720px;">
@@ -820,6 +906,221 @@ function updateHubUserBadge() {
   document.getElementById('hub-user-badge-name').textContent = currentUser.name;
   document.getElementById('hub-user-badge-role').textContent = currentUser.position || '';
   badge.style.display = 'block';
+  initHubDashboard();
+}
+
+// ============================================================
+// HUB DASHBOARD — quick links + rolling digests
+// ============================================================
+// Everything here is best-effort: the hub must still work if Monday or Firebase
+// is unreachable, so every path fails closed to a quiet message.
+function initHubDashboard(){
+  renderQuickLinks();
+  loadHubDigest();
+}
+
+// ---- Quick links ----
+let hubLinks = [];
+
+// Only http(s) links are allowed through — an admin pasting a javascript: URL
+// would otherwise become stored XSS for every hub user.
+function safeLinkUrl(raw){
+  let s = String(raw||'').trim();
+  if(!s) return '';
+  if(!/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(s)) s = 'https://' + s;   // bare domain
+  try{
+    const u = new URL(s);
+    return (u.protocol === 'http:' || u.protocol === 'https:') ? u.href : '';
+  }catch(e){ return ''; }
+}
+
+async function renderQuickLinks(){
+  const wrap = document.getElementById('hub-quicklinks');
+  const addBtn = document.getElementById('hub-addlink-btn');
+  if(!wrap) return;
+  if(addBtn) addBtn.style.display = isAdmin ? 'inline-flex' : 'none';
+  try{
+    hubLinks = await hubLinksLoad();
+  }catch(e){
+    console.warn('Quick links unavailable', e);
+    wrap.innerHTML = '';
+    return;
+  }
+  wrap.innerHTML = hubLinks.map(l => {
+    const href = safeLinkUrl(l.url);
+    if(!href) return '';
+    return `<a class="hub-chip" href="${esc(href)}" target="_blank" rel="noopener noreferrer" onclick="logQuickLink('${esc(String(l.label||'')).replace(/'/g,"\\'")}')">
+      ${l.icon ? `<span class="hub-chip-icon">${esc(l.icon)}</span>` : ''}
+      <span>${esc(l.label||'Link')}</span>
+      ${isAdmin ? `<button class="hub-chip-del" title="Remove this link" onclick="event.preventDefault();event.stopPropagation();deleteQuickLink('${esc(l.id)}')">×</button>` : ''}
+    </a>`;
+  }).join('');
+}
+
+function logQuickLink(label){
+  try{
+    logToFirebase({
+      name: currentUser.name||'Unknown', email: currentUser.email||'', role: currentUser.position||'',
+      tool: 'Budget Hub', action: 'Opened Quick Link',
+      description: 'Opened the quick link "' + label + '" from the hub.'
+    });
+  }catch(e){}
+}
+
+function openAddLinkModal(){
+  ['addlink-label','addlink-url','addlink-icon'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+  const err = document.getElementById('addlink-err'); if(err) err.style.display='none';
+  document.getElementById('addlink-modal').classList.add('open');
+}
+function closeAddLinkModal(){ document.getElementById('addlink-modal').classList.remove('open'); }
+
+async function saveQuickLink(){
+  const err = document.getElementById('addlink-err');
+  const fail = m => { if(err){ err.textContent = m; err.style.display='block'; } };
+  const label = document.getElementById('addlink-label').value.trim();
+  const rawUrl = document.getElementById('addlink-url').value.trim();
+  const icon  = document.getElementById('addlink-icon').value.trim();
+  if(!label) return fail('Give the link a label.');
+  const url = safeLinkUrl(rawUrl);
+  if(!url) return fail('Enter a valid web address starting with http:// or https://');
+  closeAddLinkModal();
+  showLoading('Adding link...');
+  try{
+    await hubLinksAdd({ label, url, icon, order: (hubLinks.length ? Math.max(...hubLinks.map(l=>l.order??0)) + 1 : 1), createdBy: currentUser.name||'' });
+    logActivity('Quick Link Added',{ description:`Added the hub quick link "${label}" → ${url}` });
+    await renderQuickLinks();
+    hideLoading();
+    showToast('Link added','success');
+  }catch(e){
+    hideLoading();
+    showToast('Could not add the link: ' + e.message,'error');
+  }
+}
+
+async function deleteQuickLink(id){
+  const link = hubLinks.find(l => l.id === id);
+  if(!link) return;
+  if(!confirm(`Remove the quick link "${link.label}"?\n\nIt disappears from the hub for everyone.`)) return;
+  showLoading('Removing link...');
+  try{
+    await hubLinksDelete(id);
+    logActivity('Quick Link Removed',{ description:`Removed the hub quick link "${link.label}"` });
+    await renderQuickLinks();
+    hideLoading();
+    showToast('Link removed','success');
+  }catch(e){
+    hideLoading();
+    showToast('Could not remove the link: ' + e.message,'error');
+  }
+}
+
+// ---- Rolling digests ----
+function hubFmtDate(iso){
+  if(!iso) return '';
+  const d = new Date(iso + 'T00:00:00');
+  if(isNaN(d)) return iso;
+  return d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+}
+
+// Fills a panel and starts the marquee only when the rows genuinely overflow —
+// a short list should sit still rather than crawl for no reason.
+function fillHubPanel(listEl, countEl, rows, emptyMsg){
+  if(!listEl) return;
+  if(countEl) countEl.textContent = rows.length ? rows.length : '';
+  if(!rows.length){
+    listEl.classList.remove('rolling');
+    listEl.style.animationDuration = '';
+    listEl.innerHTML = `<div class="hub-empty">${esc(emptyMsg)}</div>`;
+    return;
+  }
+  const html = rows.join('');
+  listEl.classList.remove('rolling');
+  listEl.style.animationDuration = '';
+  listEl.innerHTML = html;
+  requestAnimationFrame(() => {
+    const view = listEl.parentElement;
+    if(!view) return;
+    if(listEl.scrollHeight > view.clientHeight + 2){
+      listEl.innerHTML = html + html;               // second copy makes the loop seamless
+      listEl.style.animationDuration = Math.max(12, rows.length * 2.6) + 's';
+      listEl.classList.add('rolling');
+    }
+  });
+}
+
+async function loadHubDigest(){
+  const dueList = document.getElementById('hub-due-list');
+  const appList = document.getElementById('hub-approved-list');
+  if(!dueList || !appList) return;
+
+  const now = new Date();
+  const titleEl = document.getElementById('hub-due-title');
+  if(titleEl) titleEl.textContent = 'Due in ' + now.toLocaleDateString('en-US',{month:'long'});
+
+  try{
+    const meta = await mondayQuery(`{ boards(ids:${BOARD_ID}){ groups{ id title } columns{ id title } } }`);
+    const board = meta && meta.boards && meta.boards[0];
+    if(!board) throw new Error('Board not found');
+
+    let groupId = null;
+    board.groups.forEach(g => { if(g.title.trim() === String(currentYear)) groupId = g.id; });
+    const c = {};
+    board.columns.forEach(col => {
+      const t = col.title.toLowerCase().trim();
+      if(t === 'budget due to client per pma') c.due = col.id;
+      else if(t === 'budget approved by the client') c.approved = col.id;
+    });
+    if(!groupId || !c.due){ throw new Error('Board layout not recognised'); }
+
+    const ids = [c.due, c.approved].filter(Boolean).map(x => `"${x}"`).join(',');
+    let items = [], cursor = null;
+    do{
+      const q = cursor
+        ? `{ next_items_page(limit:500, cursor:"${cursor}"){ cursor items{ id name column_values(ids:[${ids}]){ id text } } } }`
+        : `{ boards(ids:${BOARD_ID}){ groups(ids:"${groupId}"){ items_page(limit:500){ cursor items{ id name column_values(ids:[${ids}]){ id text } } } } } }`;
+      const res = await mondayQuery(q);
+      const page = cursor ? res.next_items_page : res.boards[0].groups[0].items_page;
+      if(!page) break;
+      items = items.concat(page.items || []);
+      cursor = page.cursor;
+    } while(cursor);
+
+    const val = (it, colId) => {
+      if(!colId) return '';
+      const cv = it.column_values.find(x => x.id === colId);
+      return (cv && cv.text) ? cv.text.trim() : '';
+    };
+    const iso = d => d.toISOString().slice(0,10);
+    const today = new Date(); today.setHours(0,0,0,0);
+    const monthStart = iso(new Date(now.getFullYear(), now.getMonth(), 1));
+    const monthEnd   = iso(new Date(now.getFullYear(), now.getMonth()+1, 0));
+    const weekAgo    = iso(new Date(today.getTime() - 7*864e5));
+    const todayStr   = iso(today);
+
+    // Due this calendar month, soonest first
+    const due = items
+      .map(it => ({ name: displayName(it.name), date: val(it, c.due) }))
+      .filter(r => r.date >= monthStart && r.date <= monthEnd)
+      .sort((a,b) => a.date.localeCompare(b.date))
+      .map(r => {
+        const cls = r.date < todayStr ? 'past' : (r.date === todayStr ? 'soon' : 'ok');
+        return `<div class="hub-row"><span class="hub-row-name" title="${esc(r.name)}">${esc(r.name)}</span><span class="hub-row-date ${cls}">${esc(hubFmtDate(r.date))}</span></div>`;
+      });
+
+    // Approved in the last 7 days, most recent first
+    const approved = c.approved ? items
+      .map(it => ({ name: displayName(it.name), date: val(it, c.approved) }))
+      .filter(r => r.date && r.date >= weekAgo && r.date <= todayStr)
+      .sort((a,b) => b.date.localeCompare(a.date))
+      .map(r => `<div class="hub-row"><span class="hub-row-name" title="${esc(r.name)}">${esc(r.name)}</span><span class="hub-row-date done">${esc(hubFmtDate(r.date))}</span></div>`) : [];
+
+    fillHubPanel(dueList, document.getElementById('hub-due-count'), due, 'Nothing due this month.');
+    fillHubPanel(appList, document.getElementById('hub-approved-count'), approved, 'No approvals in the last 7 days.');
+  }catch(e){
+    console.warn('Hub digest unavailable', e);
+    dueList.innerHTML = '<div class="hub-empty">Couldn\'t load due dates.</div>';
+    appList.innerHTML = '<div class="hub-empty">Couldn\'t load approvals.</div>';
+  }
 }
 
 function submitHubLogin() {
