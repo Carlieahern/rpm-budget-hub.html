@@ -599,6 +599,7 @@
             <button class="btn btn-secondary" onclick="testSettingsConnection()">🔌 Test Connection</button>
             <button class="btn btn-secondary" onclick="resyncMonday()">🔄 Re-sync from Monday</button>
             <button class="btn btn-secondary" id="settings-backfill-btn" onclick="runBackfillFromSettings()">🔗 Backfill Budget Due Dates</button>
+            <button class="btn btn-secondary" style="border-color:var(--green);color:var(--green);" onclick="closeModal('settings-modal');scanTargetDateRestore()">🛟 Restore Target Dates</button>
           </div>
           <div id="settings-test-result" style="margin-top:12px;font-size:12px;"></div>
         </div>
@@ -744,6 +745,21 @@
     <div class="year-switch-actions">
       <button class="btn btn-secondary" onclick="document.getElementById('bulk-clear-dates-modal').classList.remove('open')">Cancel</button>
       <button class="btn" style="background:#C0392B;color:white;border:none;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:600;cursor:pointer;" onclick="applyBulkClearDates()">Yes, Clear Dates</button>
+    </div>
+  </div>
+</div>
+
+<!-- RESTORE TARGET DATES MODAL -->
+<div class="modal-overlay" id="restore-modal">
+  <div class="modal" style="max-width:720px;">
+    <div class="modal-header modal-header-accent">
+      <div><div class="modal-title">🛟 Restore Target Dates</div><div class="modal-subtitle">Recovered from Monday's activity history</div></div>
+      <button class="modal-close" onclick="closeModal('restore-modal')">×</button>
+    </div>
+    <div class="modal-body" id="restore-body"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('restore-modal')">Cancel</button>
+      <button class="btn btn-copper" id="restore-go" onclick="runTargetDateRestore()">Restore</button>
     </div>
   </div>
 </div>
@@ -2581,6 +2597,194 @@ async function saveProperty(isComplete=false){
     showToast('Save failed: '+err.message,'error');
   }
 }
+// ============================================================
+// RESTORE TARGET DATES
+// ============================================================
+// Recovery for the save bug that blanked the six Target date columns: saveProperty
+// looked up inputs that aren't on the edit form, read undefined, and sent "" —
+// which Monday treats as "clear". The write itself is recorded in Monday's activity
+// log along with the previous value, so the old dates can be read back out.
+//
+// Only ever FILLS BLANKS. A column that currently holds a value is left alone, so
+// running this can't overwrite anything anyone has since re-entered by hand.
+let restorePlan = [];
+
+function targetColumnMap(){
+  const m = {};
+  if(COL.forecastTarget)   m[COL.forecastTarget]   = 'Forecast Target';
+  if(COL.firstDraftTarget) m[COL.firstDraftTarget] = 'First Draft Target';
+  if(COL.rvpReturnTarget)  m[COL.rvpReturnTarget]  = 'RVP Return Target';
+  if(COL.cmReturnTarget)   m[COL.cmReturnTarget]   = 'CM Return Target';
+  if(COL.rmReviewTarget)   m[COL.rmReviewTarget]   = 'RM Review Target';
+  if(COL.finalTarget)      m[COL.finalTarget]      = 'Final to Client Target';
+  return m;
+}
+
+// Monday stores a date column's value as {"date":"YYYY-MM-DD"} (sometimes with time).
+function dateFromMondayValue(v){
+  if(v === null || v === undefined) return '';
+  try{
+    const o = (typeof v === 'string') ? JSON.parse(v) : v;
+    if(!o) return '';
+    if(typeof o === 'string') return /^\d{4}-\d{2}-\d{2}/.test(o) ? o.slice(0,10) : '';
+    return (o.date && /^\d{4}-\d{2}-\d{2}/.test(o.date)) ? o.date.slice(0,10) : '';
+  }catch(e){ return ''; }
+}
+
+async function scanTargetDateRestore(){
+  const cols = targetColumnMap();
+  if(!Object.keys(cols).length){
+    showToast('No Target date columns found on this board','error');
+    return;
+  }
+  showLoading('Reading Monday activity history...');
+  try{
+    // Current values, so we only offer to fill genuine blanks.
+    const current = {};   // itemId -> { colId: value }
+    const names   = {};
+    allProperties.forEach(p => { names[p.id] = p.name; });
+    const colIds = Object.keys(cols);
+    let items = [], cursor = null;
+    do{
+      const q = cursor
+        ? `{ next_items_page(limit:500,cursor:"${cursor}"){ cursor items{ id name column_values(ids:[${colIds.map(c=>`"${c}"`).join(',')}]){ id text } } } }`
+        : `{ boards(ids:${BOARD_ID}){ items_page(limit:500){ cursor items{ id name column_values(ids:[${colIds.map(c=>`"${c}"`).join(',')}]){ id text } } } } }`;
+      const res = await mondayQuery(q);
+      const page = cursor ? res.next_items_page : res.boards[0].items_page;
+      if(!page) break;
+      items = items.concat(page.items || []);
+      cursor = page.cursor;
+    } while(cursor);
+    items.forEach(it => {
+      names[it.id] = it.name;
+      current[it.id] = {};
+      it.column_values.forEach(cv => { current[it.id][cv.id] = (cv.text||'').trim(); });
+    });
+
+    // Activity log, newest first. Monday caps the window by plan retention.
+    let logs = [], page = 1;
+    while(page <= 20){
+      const res = await mondayQuery(`{ boards(ids:${BOARD_ID}){ activity_logs(limit:500, page:${page}){ event data created_at } } }`);
+      const batch = (res.boards && res.boards[0] && res.boards[0].activity_logs) || [];
+      logs = logs.concat(batch);
+      if(batch.length < 500) break;
+      page++;
+      showLoading('Reading Monday activity history... (' + logs.length + ' entries)');
+    }
+
+    // Newest first: the first non-empty previous_value we see for a blank column
+    // is the value it held immediately before it was cleared.
+    const found = {};   // itemId|colId -> date
+    logs.forEach(l => {
+      if(l.event !== 'update_column_value' && l.event !== 'update_column_values') return;
+      let d; try{ d = JSON.parse(l.data); }catch(e){ return; }
+      if(!d) return;
+      const colId  = d.column_id;
+      const itemId = String(d.pulse_id || d.item_id || '');
+      if(!colId || !itemId || !cols[colId]) return;
+      const key = itemId + '|' + colId;
+      if(found[key]) return;                                   // already have the newest
+      if(!current[itemId] || (current[itemId][colId] || '')) return;  // not blank now — leave it
+      const prev = dateFromMondayValue(d.previous_value);
+      const next = dateFromMondayValue(d.value);
+      if(prev && !next) found[key] = prev;                     // a real -> empty transition
+    });
+
+    restorePlan = Object.keys(found).map(k => {
+      const [itemId, colId] = k.split('|');
+      return {itemId, colId, colLabel:cols[colId], date:found[k], name:names[itemId] || itemId};
+    }).sort((a,b) => (a.name||'').localeCompare(b.name||''));
+
+    hideLoading();
+    renderRestorePreview(logs.length);
+  }catch(e){
+    hideLoading();
+    showToast('Could not read activity history: ' + e.message,'error');
+  }
+}
+
+function renderRestorePreview(logCount){
+  const body = document.getElementById('restore-body');
+  const go   = document.getElementById('restore-go');
+  const blanks = countBlankTargets();
+  if(!restorePlan.length){
+    go.style.display = 'none';
+    body.innerHTML = `<div style="font-size:13px;color:var(--text2);line-height:1.7;">
+      Nothing to restore from the ${logCount} activity entries Monday returned.<br><br>
+      ${blanks ? `<strong>${blanks}</strong> Target date${blanks===1?' is':'s are'} currently blank, but no "cleared" entry for ${blanks===1?'it':'them'} appears in the history. That usually means the change is older than your Monday plan's activity-log retention, or those dates were never filled in.<br><br>Monday keeps per-item history too — open a property, click its item, and check the item's Activity Log for the original values.`
+              : 'Every Target date column currently holds a value, so there is nothing to recover.'}
+    </div>`;
+    openModal('restore-modal');
+    return;
+  }
+  go.style.display = '';
+  go.textContent = 'Restore ' + restorePlan.length + ' date' + (restorePlan.length===1?'':'s');
+  const cell = 'padding:6px 10px;border-bottom:1px solid var(--border);font-size:12px;';
+  body.innerHTML = `
+    <div style="font-size:12px;color:var(--text2);line-height:1.7;margin-bottom:12px;">
+      Found <strong>${restorePlan.length}</strong> Target date${restorePlan.length===1?'':'s'} that ${restorePlan.length===1?'was':'were'} cleared and ${restorePlan.length===1?'is':'are'} still blank. These are the values held immediately before the clear.<br>
+      Only blank columns are filled — anything already holding a value is left untouched.
+    </div>
+    <div style="max-height:320px;overflow:auto;border:1px solid var(--border);border-radius:8px;">
+      <table style="width:100%;border-collapse:collapse;">
+        <thead><tr>
+          <th style="${cell}text-align:left;font-size:10px;color:var(--text3);">PROPERTY</th>
+          <th style="${cell}text-align:left;font-size:10px;color:var(--text3);">COLUMN</th>
+          <th style="${cell}text-align:left;font-size:10px;color:var(--green);">RESTORE TO</th>
+        </tr></thead>
+        <tbody>${restorePlan.map(r => `<tr>
+          <td style="${cell}">${esc(displayName(r.name))}</td>
+          <td style="${cell}color:var(--text2);">${esc(r.colLabel)}</td>
+          <td style="${cell}font-weight:700;color:var(--green);">${esc(fmtDateDisplay(r.date)||r.date)}</td>
+        </tr>`).join('')}</tbody>
+      </table>
+    </div>`;
+  openModal('restore-modal');
+}
+
+function countBlankTargets(){
+  const cols = targetColumnMap();
+  const keys = Object.keys(cols);
+  let n = 0;
+  allProperties.forEach(p => {
+    keys.forEach(c => {
+      const f = {[COL.forecastTarget]:'forecastTarget',[COL.firstDraftTarget]:'firstDraftTarget',
+                 [COL.rvpReturnTarget]:'rvpReturnTarget',[COL.cmReturnTarget]:'cmReturnTarget',
+                 [COL.rmReviewTarget]:'rmReviewTarget',[COL.finalTarget]:'finalTarget'}[c];
+      if(f && !(p[f]||'').trim()) n++;
+    });
+  });
+  return n;
+}
+
+async function runTargetDateRestore(){
+  if(!restorePlan.length) return;
+  const preview = restorePlan.slice(0,10).map(r => '  • ' + displayName(r.name) + ' — ' + r.colLabel + ' → ' + r.date).join('\n');
+  if(!confirm('RESTORE ' + restorePlan.length + ' TARGET DATE' + (restorePlan.length===1?'':'S') + ' IN MONDAY?\n\n' +
+    preview + (restorePlan.length > 10 ? '\n  …and ' + (restorePlan.length-10) + ' more' : '') +
+    '\n\nOnly columns that are currently blank will be written. Nothing that already holds a value is touched.\n\nContinue?')) return;
+  closeModal('restore-modal');
+  showLoading('Restoring 0 of ' + restorePlan.length + '...');
+  // Group per item so each property is a single mutation.
+  const byItem = {};
+  restorePlan.forEach(r => { (byItem[r.itemId] = byItem[r.itemId] || {})[r.colId] = {date:r.date}; });
+  const ids = Object.keys(byItem);
+  let done = 0, failed = 0;
+  for(const itemId of ids){
+    try{
+      await mondayQuery(`mutation { change_multiple_column_values(board_id:${BOARD_ID},item_id:${itemId},column_values:${JSON.stringify(JSON.stringify(byItem[itemId]))}) { id } }`);
+      done += Object.keys(byItem[itemId]).length;
+    }catch(e){ failed++; console.warn('restore failed', itemId, e); }
+    showLoading('Restoring ' + done + ' of ' + restorePlan.length + '...');
+  }
+  logActivity('Target Dates Restored',{
+    description:`Restored ${done} cleared Target date(s) across ${ids.length} propert${ids.length===1?'y':'ies'} from Monday activity history` + (failed?`, ${failed} propert${failed===1?'y':'ies'} failed`:'') + '.'
+  });
+  restorePlan = [];
+  await loadItems();
+  showToast(`Restored ${done} date${done===1?'':'s'}` + (failed?`, ${failed} failed`:''), failed ? 'error' : 'success');
+}
+
 // ============================================================
 // ADD TO CALENDAR
 // ============================================================
